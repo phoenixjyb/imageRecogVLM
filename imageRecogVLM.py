@@ -12,6 +12,9 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import math
 
+# Constants
+RESIZE_WIDTH = 256  # Width to resize images to before sending to VLM
+
 # Securely load API key from environment variable
 API_KEY = os.getenv('XAI_API_KEY')
 if not API_KEY:
@@ -53,19 +56,19 @@ def build_prompt(object_str: str, image_width: int, image_height: int) -> str:
     """
     return (
         f"please use the vlm such as grok4 to read the image provided, which has been resized to a resolution of {image_width}x{image_height} pixels, "
-        f"and locate the object of interest '{object_str}' (specifically looking for Coca-Cola cans with red color and white logo). "
+        f"and locate the object of interest '{object_str}'. Please identify all instances of this object in the image. "
         f"Please summarize the coordinates in a concise table with columns 'H', 'V', and 'ID' for each instance found. If no object is found, return a table with 'H', 'V', 'ID' values of 0, 0, 0."
     )
 
 def encode_image(image_path: str) -> tuple[str, int, int, int, int]:
     """
-    Encode image to base64 after preprocessing to resize to 256px width, maintaining aspect ratio.
+    Encode image to base64 after preprocessing to resize to RESIZE_WIDTH px width, maintaining aspect ratio.
     Returns the base64 string and original/new dimensions.
     """
     with Image.open(image_path) as img:
         img = img.convert('RGB')
         original_width, original_height = img.size
-        new_width = 256
+        new_width = RESIZE_WIDTH
         aspect_ratio = original_height / original_width
         new_height = int(new_width * aspect_ratio)
         resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
@@ -106,9 +109,9 @@ def call_grok4_api(prompt: str, image_path: str, api_key: str) -> str:
     except requests.exceptions.RequestException as e:
         raise Exception(f"API request failed after retries: {str(e)}")
 
-def parse_response(response_text: str, object_str: str) -> tuple[str, bool]:
+def parse_response(response_text: str, object_str: str, original_width: int, original_height: int, new_width: int, new_height: int) -> tuple[str, bool]:
     """
-    Parse VLM response for coordinates from a table, rescale to original resolution (640x480).
+    Parse VLM response for coordinates from a table, rescale to original resolution.
     Returns formatted table string and recognized flag.
     """
     print(f"Parsing response: {response_text}")
@@ -130,9 +133,7 @@ def parse_response(response_text: str, object_str: str) -> tuple[str, bool]:
                 h = int(cells[0])
                 v = int(cells[1])
                 id_num = cells[2] if cells[2].isdigit() else "0"
-                # Rescale coordinates to original resolution (640x480)
-                original_width, original_height = 640, 480
-                new_width, new_height = 256, 192
+                # Rescale coordinates to original resolution
                 scaled_h = int(h * (original_width / new_width))
                 scaled_v = int(v * (original_height / new_height))
                 coordinates.append((scaled_h, scaled_v, id_num))
@@ -215,9 +216,13 @@ def main():
             print(f"Image loaded: {width}x{height}")
         
         object_str = extract_object(user_input)
-        prompt = build_prompt(object_str, 256, 192)
+        
+        # Get dimensions by encoding the image first
+        _, original_width, original_height, new_width, new_height = encode_image(image_path)
+        
+        prompt = build_prompt(object_str, new_width, new_height)
         response_text = call_grok4_api(prompt, image_path, API_KEY)
-        coord_str, recognized = parse_response(response_text, object_str)
+        coord_str, recognized = parse_response(response_text, object_str, original_width, original_height, new_width, new_height)
         resp_text = generate_response(object_str, recognized, coord_str)
         print(resp_text)
         text_to_speech(resp_text)
