@@ -3,13 +3,14 @@ import requests
 import re
 import random
 import base64
-from PIL import Image
+from PIL import Image, ImageDraw
 from gtts import gTTS
 import pygame
 import tempfile
 import time
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import math
 
 # Securely load API key from environment variable
 API_KEY = os.getenv('XAI_API_KEY')
@@ -180,6 +181,24 @@ def text_to_speech(text: str) -> None:
     except Exception as e:
         print(f"TTS failed: {e}. Falling back to text output.")
 
+def show_image_with_star(image_path: str, x: int, y: int, star_size: int = 20):
+    """
+    Display the image and draw a star at (x, y).
+    """
+    with Image.open(image_path) as img:
+        draw = ImageDraw.Draw(img)
+
+        # Calculate star points (5-pointed star)
+        points = []
+        for i in range(5):
+            angle = math.radians(i * 144 - 90)
+            outer_x = x + star_size * math.cos(angle)
+            outer_y = y + star_size * math.sin(angle)
+            points.append((outer_x, outer_y))
+        draw.polygon(points, fill="yellow", outline="red")
+
+        img.show()
+
 def main():
     """
     Main function to orchestrate the process.
@@ -202,6 +221,30 @@ def main():
         resp_text = generate_response(object_str, recognized, coord_str)
         print(resp_text)
         text_to_speech(resp_text)
+
+        # --- Show image with star if coordinates are valid ---
+        if recognized and coord_str != "0 | 0 | 0":
+            try:
+                coords = [
+                    [int(s.strip()) for s in coord.split('|')]
+                    for coord in coord_str.split(';')
+                ]
+                with Image.open(image_path) as img:
+                    draw = ImageDraw.Draw(img)
+                    for h, v, _ in coords:
+                        # Draw star at each (h, v)
+                        points = []
+                        star_size = 20
+                        for i in range(5):
+                            angle = math.radians(i * 144 - 90)
+                            outer_x = h + star_size * math.cos(angle)
+                            outer_y = v + star_size * math.sin(angle)
+                            points.append((outer_x, outer_y))
+                        draw.polygon(points, fill="yellow", outline="red")
+                    img.show()
+            except Exception as e:
+                print(f"Could not plot star: {e}")
+
     except ValueError as ve:
         error_msg = str(ve)
         print(error_msg)
