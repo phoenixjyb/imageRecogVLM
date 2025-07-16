@@ -1,0 +1,258 @@
+"""Coordinate parsing utilities for VLM responses."""
+
+import re
+import logging
+from typing import List, Dict, Any, Optional, Tuple
+
+class CoordinateParser:
+    """Parses coordinates from VLM responses in various formats."""
+    
+    def __init__(self):
+        """Initialize coordinate parser."""
+        self.logger = logging.getLogger(__name__)
+        
+        # Define coordinate patterns for different formats
+        self.patterns = {
+            'bracket_coords': r'\[(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\]',
+            'paren_coords': r'\((\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\)',
+            'bbox_format': r'(?:bounding box|bbox|coordinates?):\s*\[?(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\]?',
+            'ratio_coords': r'(?:0\.\d+)\s*,\s*(?:0\.\d+)\s*,\s*(?:0\.\d+)\s*,\s*(?:0\.\d+)',
+            'pixel_coords': r'(\d{1,4})\s*,\s*(\d{1,4})\s*,\s*(\d{1,4})\s*,\s*(\d{1,4})',
+            'object_coords': r'Object:\s*\w+.*?(?:coordinates?|location):\s*\[?(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\]?'
+        }
+    
+    def parse_coordinates(self, text: str, image_width: int = 640, image_height: int = 480) -> List[Dict[str, Any]]:
+        """Parse coordinates from text response."""
+        if not text:
+            return []
+        
+        all_objects = []
+        
+        # Try each parsing method
+        all_objects.extend(self._parse_standard_coordinates(text))
+        all_objects.extend(self._parse_table_format(text))
+        all_objects.extend(self._parse_ratio_coordinates(text, image_width, image_height))
+        all_objects.extend(self._parse_descriptive_coordinates(text, image_width, image_height))
+        
+        # Remove duplicates and validate
+        validated_objects = self._validate_and_deduplicate(all_objects, image_width, image_height)
+        
+        self.logger.info(f"Parsed {len(validated_objects)} valid coordinate sets from text")
+        return validated_objects
+    
+    def _parse_standard_coordinates(self, text: str) -> List[Dict[str, Any]]:
+        """Parse standard coordinate formats."""
+        objects = []
+        
+        for pattern_name, pattern in self.patterns.items():
+            if pattern_name == 'ratio_coords':  # Handle separately
+                continue
+                
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                try:
+                    coords = [float(x) for x in match.groups()]
+                    if len(coords) == 4:
+                        objects.append({
+                            'coordinates': coords,
+                            'confidence': self._get_confidence_for_pattern(pattern_name),
+                            'source': f'parser_{pattern_name}'
+                        })
+                except (ValueError, IndexError):
+                    continue
+        
+        return objects
+    
+    def _parse_table_format(self, text: str) -> List[Dict[str, Any]]:
+        """Parse markdown table format."""
+        objects = []
+        lines = text.split('\n')
+        
+        for line in lines:
+            if '|' in line and ('[' in line or '(' in line):
+                # Extract coordinates from table cells
+                for pattern_name, pattern in ['bracket_coords', 'paren_coords']:
+                    pattern = self.patterns[pattern_name]
+                    match = re.search(pattern, line)
+                    if match:
+                        try:
+                            coords = [float(x) for x in match.groups()]
+                            objects.append({
+                                'coordinates': coords,
+                                'confidence': 0.7,
+                                'source': 'parser_table'
+                            })
+                            break
+                        except (ValueError, IndexError):
+                            continue
+        
+        return objects
+    
+    def _parse_ratio_coordinates(self, text: str, image_width: int, image_height: int) -> List[Dict[str, Any]]:
+        """Parse ratio-based coordinates (0.0 to 1.0) and convert to pixels."""
+        objects = []
+        
+        # Look for ratio patterns
+        ratio_pattern = r'(0\.\d+)\s*,\s*(0\.\d+)\s*,\s*(0\.\d+)\s*,\s*(0\.\d+)'
+        matches = re.finditer(ratio_pattern, text)
+        
+        for match in matches:
+            try:
+                ratios = [float(x) for x in match.groups()]
+                
+                # Convert ratios to pixel coordinates
+                x1 = ratios[0] * image_width
+                y1 = ratios[1] * image_height
+                x2 = ratios[2] * image_width
+                y2 = ratios[3] * image_height
+                
+                objects.append({
+                    'coordinates': [x1, y1, x2, y2],
+                    'confidence': 0.6,
+                    'source': 'parser_ratio'
+                })
+            except (ValueError, IndexError):
+                continue
+        
+        return objects
+    
+    def _parse_descriptive_coordinates(self, text: str, image_width: int, image_height: int) -> List[Dict[str, Any]]:
+        """Parse descriptive location terms and convert to approximate coordinates."""
+        objects = []
+        
+        # Define descriptive patterns and their approximate coordinates
+        descriptive_map = {
+            r'(?:top|upper).*?(?:left|corner)': (0.1, 0.1, 0.3, 0.3),
+            r'(?:top|upper).*?(?:right|corner)': (0.7, 0.1, 0.9, 0.3),
+            r'(?:bottom|lower).*?(?:left|corner)': (0.1, 0.7, 0.3, 0.9),
+            r'(?:bottom|lower).*?(?:right|corner)': (0.7, 0.7, 0.9, 0.9),
+            r'(?:center|middle|central)': (0.35, 0.35, 0.65, 0.65),
+            r'(?:left|left side)': (0.05, 0.35, 0.25, 0.65),
+            r'(?:right|right side)': (0.75, 0.35, 0.95, 0.65),
+            r'(?:top|upper)(?!\s*(?:left|right))': (0.35, 0.05, 0.65, 0.25),
+            r'(?:bottom|lower)(?!\s*(?:left|right))': (0.35, 0.75, 0.65, 0.95)
+        }
+        
+        text_lower = text.lower()
+        for pattern, ratio_coords in descriptive_map.items():
+            if re.search(pattern, text_lower):
+                # Convert ratios to pixel coordinates
+                x1 = ratio_coords[0] * image_width
+                y1 = ratio_coords[1] * image_height
+                x2 = ratio_coords[2] * image_width
+                y2 = ratio_coords[3] * image_height
+                
+                objects.append({
+                    'coordinates': [x1, y1, x2, y2],
+                    'confidence': 0.3,
+                    'source': 'parser_descriptive'
+                })
+                break  # Only use first match
+        
+        return objects
+    
+    def _validate_and_deduplicate(self, objects: List[Dict[str, Any]], 
+                                 image_width: int, image_height: int) -> List[Dict[str, Any]]:
+        """Validate coordinates and remove duplicates."""
+        validated = []
+        
+        for obj in objects:
+            coords = obj['coordinates']
+            
+            # Basic validation
+            if not self._validate_coordinates(coords, image_width, image_height):
+                continue
+            
+            # Check for duplicates (within 10 pixels tolerance)
+            if not self._is_duplicate(coords, validated, tolerance=10):
+                validated.append(obj)
+        
+        # Sort by confidence (highest first)
+        validated.sort(key=lambda x: x.get('confidence', 0), reverse=True)
+        
+        return validated
+    
+    def _validate_coordinates(self, coords: List[float], image_width: int, image_height: int) -> bool:
+        """Validate if coordinates are reasonable."""
+        if len(coords) != 4:
+            return False
+        
+        x1, y1, x2, y2 = coords
+        
+        # Check if coordinates are non-negative
+        if any(coord < 0 for coord in coords):
+            return False
+        
+        # Check if coordinates are within image bounds (with some tolerance)
+        if x1 >= image_width or y1 >= image_height or x2 >= image_width or y2 >= image_height:
+            return False
+        
+        # Check if bounding box is valid (x2 > x1, y2 > y1)
+        if x2 <= x1 or y2 <= y1:
+            return False
+        
+        # Check if bounding box is reasonably sized (not too small)
+        min_size = 5
+        if (x2 - x1) < min_size or (y2 - y1) < min_size:
+            return False
+        
+        return True
+    
+    def _is_duplicate(self, coords: List[float], existing: List[Dict[str, Any]], tolerance: float = 10) -> bool:
+        """Check if coordinates are duplicate of existing ones."""
+        x1, y1, x2, y2 = coords
+        
+        for existing_obj in existing:
+            ex1, ey1, ex2, ey2 = existing_obj['coordinates']
+            
+            # Check if coordinates are within tolerance
+            if (abs(x1 - ex1) <= tolerance and abs(y1 - ey1) <= tolerance and
+                abs(x2 - ex2) <= tolerance and abs(y2 - ey2) <= tolerance):
+                return True
+        
+        return False
+    
+    def _get_confidence_for_pattern(self, pattern_name: str) -> float:
+        """Get confidence score based on pattern type."""
+        confidence_map = {
+            'bracket_coords': 0.8,
+            'paren_coords': 0.7,
+            'bbox_format': 0.9,
+            'pixel_coords': 0.6,
+            'object_coords': 0.8
+        }
+        return confidence_map.get(pattern_name, 0.5)
+    
+    def parse_single_coordinate_set(self, text: str) -> Optional[List[float]]:
+        """Parse a single set of coordinates from text."""
+        objects = self.parse_coordinates(text)
+        if objects:
+            return objects[0]['coordinates']
+        return None
+    
+    def extract_coordinate_context(self, text: str) -> List[Dict[str, Any]]:
+        """Extract coordinates with surrounding context."""
+        results = []
+        
+        for pattern_name, pattern in self.patterns.items():
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                try:
+                    coords = [float(x) for x in match.groups()]
+                    if len(coords) == 4:
+                        # Get surrounding context (50 chars before and after)
+                        start = max(0, match.start() - 50)
+                        end = min(len(text), match.end() + 50)
+                        context = text[start:end]
+                        
+                        results.append({
+                            'coordinates': coords,
+                            'pattern': pattern_name,
+                            'context': context.strip(),
+                            'match_text': match.group(),
+                            'confidence': self._get_confidence_for_pattern(pattern_name)
+                        })
+                except (ValueError, IndexError):
+                    continue
+        
+        return results
