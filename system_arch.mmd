@@ -1,6 +1,4 @@
----
-title: VLM Image Recognition System Architecture
----
+%%{init: {"flowchart": {"htmlLabels": false}} }%%
 flowchart TD
     %% Input Layer
     A["`🖼️ **Input Image**
@@ -95,16 +93,82 @@ flowchart TD
     Annotated Image
     Audio Confirmation`"]
 
+    %% User Input Layer
+    USER["`👤 **User Input**`"] --> VOICE{"`🎤 **Input Mode**`"}
+    VOICE -->|Voice| SPEECH["`🎙️ **Speech Recognition**`"]
+    VOICE -->|Text| TEXT["`⌨️ **Text Input**`"]
+    
+    %% Voice Processing
+    SPEECH --> MIC["`🔧 **Microphone Calibration**`"]
+    MIC --> CAPTURE["`🎵 **Audio Capture**`"]
+    CAPTURE --> STT["`🔍 **Speech-to-Text**`"]
+    STT --> LANG{"`🌐 **Language Detection**`"}
+    LANG -->|English| ENG["`✅ **English Recognition**`"]
+    LANG -->|Chinese| CHN["`🇨🇳 **Chinese Recognition**`"]
+    LANG -->|Failed| OFFLINE["`💻 **Offline Recognition**`"]
+    
+    %% Text Processing
+    TEXT --> EXTRACT["`📝 **Text Processing**`"]
+    ENG --> EXTRACT
+    CHN --> TRANSLATE["`🔄 **Chinese Translation**`"]
+    OFFLINE --> EXTRACT
+    TRANSLATE --> EXTRACT
+    
+    %% Object Extraction
+    EXTRACT --> PATTERNS["`🎯 **Pattern Matching**`"]
+    PATTERNS --> OBJ["`📋 **Object Extraction**`"]
+    OBJ --> A
+    
+    %% Chinese Translation Components
+    TRANSLATE --> DICT["`📖 **Object Dictionary**
+    可乐→coke, 苹果→apple, 书→book`"]
+    TRANSLATE --> STRUCT["`📚 **Structure Analysis**
+    请.*?拿.*?给我, 帮我.*?拿.*`"]
+    
+    %% VLM Selection
+    EXTRACT --> VLMSEL{"`🤖 **VLM Selection**`"}
+    VLMSEL -->|Grok-4| GROK["`☁️ **Grok-4 Processing**`"]
+    VLMSEL -->|Qwen-VL| QWEN["`☁️ **Qwen-VL Processing**`"]
+    VLMSEL -->|LLaVA| LLAVA["`🏠 **LLaVA Processing**`"]
+    
+    GROK --> E
+    QWEN --> E
+    LLAVA --> F
+
     %% Subgraph for Cloud Processing
     subgraph Cloud ["`☁️ **Cloud Processing Path**`"]
         E
         G
+        GROK
+        QWEN
     end
     
     %% Subgraph for Local Processing
     subgraph Local ["`🏠 **Local Processing Path**`"]
         F
         H
+        LLAVA
+    end
+    
+    %% Subgraph for Input Processing
+    subgraph InputLayer ["`📥 **Input Processing**`"]
+        USER
+        VOICE
+        SPEECH
+        TEXT
+        MIC
+        CAPTURE
+        STT
+        LANG
+        ENG
+        CHN
+        OFFLINE
+        TRANSLATE
+        DICT
+        STRUCT
+        EXTRACT
+        PATTERNS
+        OBJ
     end
     
     %% Subgraph for Core Processing
@@ -124,104 +188,6 @@ flowchart TD
         R
     end
 
-    %% Chinese Translation Engine
-    subgraph Chinese_Translation_Engine ["`🇨🇳 **Chinese Translation Engine**`"]
-        D["`🔄 **Chinese Translation**
-    Detect Language
-    Translate to English`"]
-        E["`📚 **Pattern Matching**
-    Analyze Sentence Structure
-    Match with Object Dictionary`"]
-        F["`🔤 **Object Translation**
-    Translate Detected Objects
-    Map to English Equivalents`"]
-        
-        II["`📋 **Command Patterns**
-    请.*?拿.*?给我
-    帮我.*?拿.*
-    找.*?给我`"]
-        
-        JJ["`📖 **Object Dictionary**
-    可乐→coke
-    苹果→apple
-    书→book`"]
-        
-        D --> E
-        E --> F
-        II --> E
-        JJ --> F
-    end
-    
-    %% VLM Processing Pipeline
-    subgraph VLM_Processing_Pipeline ["`🚀 **VLM Processing Pipeline**`"]
-        K["`☁️ **Grok-4 Cloud**
-    High Accuracy
-    English Optimized`"]
-        L["`☁️ **Qwen-VL Cloud**
-    Chinese Optimized
-    Good Accuracy`"]
-        M["`🏠 **LLaVA Local**
-    Privacy Focused
-    Free Processing`"]
-        
-        FF["`🔍 **Grok-4 API**
-    Analyze Image
-    Generate Response`"]
-        GG["`🔍 **Qwen-VL API**
-    Analyze Image
-    Generate Response`"]
-        HH["`🔍 **LLaVA Local API**
-    Analyze Image
-    Generate Response`"]
-        
-        K --> FF
-        L --> GG
-        M --> HH
-    end
-    
-    %% Image Processing
-    subgraph Image_Processing ["`🖼️ **Image Processing**`"]
-        Q["`📐 **Original Resolution**
-    95% Quality
-    Base64 Encoding`"]
-        R["`📏 **Local Resize**
-    85% Quality
-    Optimized Size`"]
-        
-        KK["`🔄 **Base64 Decode**
-    Convert to Image
-    Prepare for VLM`"]
-        LL["`📏 **Image Resizing**
-    Adjust to VLM Specs
-    Maintain Quality`"]
-        
-        Q --> KK
-        R --> LL
-    end
-    
-    %% Output Generation
-    subgraph Output_Generation ["`📤 **Output Generation**`"]
-        AA["`🔊 **Text-to-Speech**
-    Announce Results
-    Object Found/Not Found`"]
-        BB["`⭐ **Visual Annotation**
-    Overlay Stars
-    Annotate Objects`"]
-        CC["`💻 **macOS Say Command**
-    Execute TTS
-    System Voice`"]
-        DD["`🟡 **Yellow Star Overlay**
-    Draw Stars on Image
-    Indicate Coordinates`"]
-        EE["`🖥️ **Image Display**
-    Show Processed Image
-    With Annotations`"]
-        
-        AA --> CC
-        BB --> DD
-        DD --> EE
-    end
-    
     %% Styling
     classDef input fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     classDef processing fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
@@ -232,10 +198,9 @@ flowchart TD
     classDef error fill:#ffebee,stroke:#f44336,stroke-width:2px
     
     class A,B,C input
-    class D,E,F processing
-    class G cloud
-    class H local
+    class D,VLMSEL,VOICE,LANG processing
+    class G,GROK,QWEN cloud
+    class H,LLAVA local
     class I,J,K,M core
     class N,O,P,Q,R output
     class L error
-```

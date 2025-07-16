@@ -14,6 +14,7 @@ import math
 from datetime import datetime
 import json
 from openai import OpenAI  # Add OpenAI import for Qwen
+import speech_recognition as sr  # Add speech recognition import
 
 # Constants
 RESIZE_WIDTH = None  # Set to None to use original resolution
@@ -44,6 +45,11 @@ def extract_object(input_text: str) -> str:
     
     # Continue with existing English processing logic
     input_text = input_text.lower().strip()
+    
+    # Pattern 0: 'show me [object]' or 'show me a/the [object]'
+    match = re.search(r'show me (?:a |the )?(.+?)(?:\s+(?:for me|to me|please))?$', input_text)
+    if match:
+        return match.group(1).strip()
     
     # Pattern 1: 'grab the [object] to me' or variations like 'grab a [object] for me'
     match = re.search(r'grab (?:the|a) (.*?) (?:to|for) me', input_text)
@@ -658,13 +664,116 @@ def check_ollama_availability() -> bool:
         print(f"   ❌ Ollama connection error: {e}")
         return False
 
+def get_input_mode() -> str:
+    """
+    Interactive function to let user choose between voice input and text input.
+    Returns 'voice' for voice input or 'text' for text input.
+    """
+    print("\n🎤 Input Mode Selection")
+    print("=" * 50)
+    print("1. 🎙️  Voice Input")
+    print("   - Speak your command")
+    print("   - Automatically converted to text")
+    print("   - Supports English and Chinese")
+    print("")
+    print("2. ⌨️  Text Input") 
+    print("   - Type your command")
+    print("   - Current default mode")
+    print("   - Supports English and Chinese")
+    print("=" * 50)
+    
+    while True:
+        choice = input("Choose input mode (1 for Voice, 2 for Text): ").strip()
+        if choice == "1":
+            return "voice"
+        elif choice == "2":
+            return "text"
+        else:
+            print("❌ Invalid choice. Please enter 1 or 2.")
+
+def get_voice_input() -> str:
+    """
+    Capture voice input and convert it to text using speech recognition.
+    Returns the recognized text or raises an exception if recognition fails.
+    """
+    print("\n🎙️ Voice Input Mode")
+    print("=" * 40)
+    print("🔴 Preparing microphone...")
+    
+    # Initialize recognizer and microphone
+    recognizer = sr.Recognizer()
+    microphone = sr.Microphone()
+    
+    # Adjust for ambient noise
+    print("🔧 Calibrating microphone for ambient noise...")
+    with microphone as source:
+        recognizer.adjust_for_ambient_noise(source, duration=1)
+    
+    print("🎤 Ready to listen! Please speak your command...")
+    print("   (e.g., 'please grab the apple to me' or '请帮我拿可乐给我')")
+    print("   💡 Tip: Speak clearly and wait for the beep")
+    
+    try:
+        # Listen for audio input
+        with microphone as source:
+            print("🔴 Recording... (speak now)")
+            audio = recognizer.listen(source, timeout=10, phrase_time_limit=8)
+            print("⏹️  Recording complete, processing...")
+        
+        # Try to recognize speech using Google's speech recognition
+        print("🔍 Converting speech to text...")
+        try:
+            # First try with English
+            user_input = recognizer.recognize_google(audio, language='en-US')
+            print(f"✅ Speech recognized (English): '{user_input}'")
+            return user_input
+        except sr.UnknownValueError:
+            # If English fails, try Chinese
+            try:
+                user_input = recognizer.recognize_google(audio, language='zh-CN')
+                print(f"✅ Speech recognized (Chinese): '{user_input}'")
+                return user_input
+            except sr.UnknownValueError:
+                raise Exception("Could not understand the audio. Please try speaking more clearly.")
+        
+    except sr.WaitTimeoutError:
+        raise Exception("No speech detected within timeout period. Please try again.")
+    except sr.RequestError as e:
+        # Fallback to offline recognition if available
+        try:
+            print("🔄 Internet connection issue, trying offline recognition...")
+            user_input = recognizer.recognize_sphinx(audio)
+            print(f"✅ Speech recognized (Offline): '{user_input}'")
+            return user_input
+        except:
+            raise Exception(f"Speech recognition service error: {e}")
+    except Exception as e:
+        raise Exception(f"Voice input error: {e}")
+
+def get_user_input() -> str:
+    """
+    Get user input either through voice or text based on user choice.
+    Returns the user's command as text.
+    """
+    input_mode = get_input_mode()
+    
+    if input_mode == "voice":
+        try:
+            return get_voice_input()
+        except Exception as e:
+            print(f"❌ Voice input failed: {e}")
+            print("🔄 Falling back to text input...")
+            return input("\n💬 Please enter your command manually: ").strip()
+    else:
+        return input("\n💬 Enter your command (e.g., 'please grab the apple to me' or '请帮我拿可乐给我'): ").strip()
+
 def main():
     """
     Main function to orchestrate the process.
-    Now supports three pathways: Grok-4, Qwen-VL, and local LLaVA.
+    Now supports voice input, text input, and three VLM pathways: Grok-4, Qwen-VL, and local LLaVA.
     """
     print("=" * 60)
-    print("🤖 VLM Object Recognition System (3-Mode)")
+    print("🤖 VLM Object Recognition System (Voice + 3-Mode)")
     print("=" * 60)
     
     overall_start_time = time.time()
@@ -672,7 +781,8 @@ def main():
     print(f"🕐 Process started at: {start_timestamp}")
     
     try:
-        user_input = input("\n💬 Enter your command (e.g., 'please grab the apple to me' or '请帮我拿可乐给我'): ").strip()
+        # Get user input via voice or text
+        user_input = get_user_input()
         
         # Check if input contains Chinese and show translation
         def contains_chinese(text):
@@ -684,10 +794,10 @@ def main():
             print(f"🔄 Translated English command: '{translated_command}'")
             print(f"✅ Using translated command for processing")
         else:
-            print(f"\n💬 English command: '{user_input}'")
+            print(f"\n💬 Command received: '{user_input}'")
         
         image_dir = "/Users/yanbo/Projects/vlmTry/sampleImages"
-        image_name = "image_000354.jpg"
+        image_name = "image_000777_rsz.jpg"
         image_path = os.path.join(image_dir, image_name)
         
         print(f"\n📂 Loading image: {image_name}")
