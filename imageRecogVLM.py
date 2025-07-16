@@ -162,51 +162,60 @@ def build_prompt(object_str: str, image_width: int, image_height: int) -> str:
     return (
         f"Analyze this image which has been resized to {image_width}x{image_height} pixels. "
         f"Locate all instances of '{object_str}' in the image. "
-        f"For each object found, determine the CENTER POINT coordinates (the middle of the object). "
-        f"Please summarize the center coordinates in a table with columns 'H', 'V', and 'ID' for each instance found. "
+        f"IMPORTANT: For each object found, determine ONLY the CENTER POINT coordinates (the exact middle of the object). "
+        f"DO NOT provide corner coordinates or bounding box coordinates. "
+        f"Please summarize ONLY the center coordinates in a table with columns 'H', 'V', and 'ID' for each instance found. "
         f"H should be the horizontal center coordinate, V should be the vertical center coordinate. "
+        f"Example format: | 320 | 240 | 1 | means center point at (320, 240). "
         f"If no object is found, return a table with 'H', 'V', 'ID' values of 0, 0, 0."
     )
 
 def build_grok_prompt(object_str: str, image_width: int, image_height: int) -> str:
     """
-    Build a Grok-specific prompt.
+    Build a Grok-specific prompt without examples.
     """
     return (
-        f"Please use Grok-4 to analyze this image which has been resized to {image_width}x{image_height} pixels. "
+        f"Analyze this {image_width}x{image_height} pixel image. "
         f"Locate all instances of '{object_str}' in the image. "
-        f"For each object found, determine the CENTER POINT coordinates (the middle of the object). "
-        f"Please summarize the center coordinates in a table with columns 'H', 'V', and 'ID' for each instance found. "
-        f"H should be the horizontal center coordinate, V should be the vertical center coordinate. "
-        f"If no object is found, return a table with 'H', 'V', 'ID' values of 0, 0, 0."
+        f"For each '{object_str}' object found: "
+        f"1. Calculate the exact center point of the object "
+        f"2. Provide coordinates in this table format: "
+        f"| H | V | ID | "
+        f"|---|---|----| "
+        f"Where H = horizontal center pixel, V = vertical center pixel. "
+        f"If no '{object_str}' is found, return: | 0 | 0 | 0 |"
     )
 
 def build_qwen_prompt(object_str: str, image_width: int, image_height: int) -> str:
     """
-    Build a Qwen-specific prompt that's more precise but still generic.
+    Build a Qwen-specific prompt that lets the VLM naturally infer center points.
     """
     return (
-        f"Analyze this image carefully (resolution: {image_width}x{image_height} pixels). "
-        f"Look specifically for '{object_str}' objects in the image. "
-        f"Focus on identifying the actual physical objects that match '{object_str}', not similar-looking items. "
-        f"For each '{object_str}' you find: "
-        f"1. Locate the exact center point of the object "
-        f"2. Provide coordinates in table format: | H | V | ID | "
-        f"3. H = horizontal pixel position, V = vertical pixel position "
-        f"4. ID = object number (1, 2, 3, etc.) "
-        f"If you cannot find any actual '{object_str}' objects, return: | 0 | 0 | 0 |"
+        f"Analyze this {image_width}x{image_height} pixel image. "
+        f"Look for '{object_str}' objects in the image. "
+        f"For each '{object_str}' you find, identify where the center of that object is located. "
+        f"Provide the center coordinates in this table format: "
+        f"| H | V | ID |"
+        f"|---|---|----| "
+        f"Where H is the horizontal pixel position and V is the vertical pixel position of the center. "
+        f"If you don't see any '{object_str}', return: | 0 | 0 | 0 |"
     )
 
 def build_local_prompt(object_str: str, image_width: int, image_height: int) -> str:
     """
-    Build an optimized prompt for local VLMs like LLaVA.
-    Uses simpler, more direct language that works better with local models.
+    Build a simple, direct prompt for local VLMs like LLaVA.
+    Enforces pixel coordinates rather than ratios.
     """
     return (
-        f"Look at this image. Do you see any '{object_str}'? "
-        f"If yes, tell me the pixel coordinates of the center of each one. "
-        f"If no, just say 'none found'. "
-        f"Image size is {image_width}x{image_height}."
+        f"Analyze this {image_width}x{image_height} pixel image carefully. "
+        f"Do you see a {object_str}? "
+        f"If yes, tell me the exact center coordinates as PIXEL VALUES, not ratios. "
+        f"The coordinates should be actual pixel numbers between 0 and {image_width} for horizontal, "
+        f"and between 0 and {image_height} for vertical. "
+        f"Format: (horizontal_pixels, vertical_pixels) "
+        f"Example: (450, 320) means 450 pixels from left, 320 pixels from top. "
+        f"Do NOT give me decimal ratios like (0.5, 0.4). Give me actual pixel integers. "
+        f"If no {object_str} is visible, respond with 'not found'."
     )
 
 def encode_image(image_path: str, resize_width: int = None) -> tuple[str, int, int, int, int]:
@@ -295,11 +304,13 @@ def call_grok4_api(prompt: str, image_path: str, api_key: str) -> str:
 
 def parse_response(response_text: str, object_str: str, original_width: int, original_height: int, new_width: int, new_height: int) -> tuple[str, bool]:
     """
-    Parse VLM response for coordinates from a table. No scaling needed if using original resolution.
+    Parse VLM response for coordinates from a table or natural language. 
+    Enhanced to handle 2-column tables (H, V only) and 3-column tables (H, V, ID).
     Returns formatted table string and recognized flag.
     """
     print("🔍 Starting coordinate parsing...")
     print(f"   📐 Image dimensions: Original({original_width}x{original_height}) → Processed({new_width}x{new_height})")
+    print(f"   📝 Response text preview: {response_text[:100]}...")
     
     # Check if we need scaling
     needs_scaling = (original_width != new_width) or (original_height != new_height)
@@ -308,55 +319,209 @@ def parse_response(response_text: str, object_str: str, original_width: int, ori
     else:
         print("   📊 No scaling needed - using original coordinates")
     
-    # Find all table rows (skip header and separator)
+    # Check for "not found" or negative responses first
+    negative_keywords = ['not found', 'cannot see', 'no ', 'not visible', 'unable to', 'not detect']
+    if any(keyword in response_text.lower() for keyword in negative_keywords):
+        print("❌ Negative response detected - object not found")
+        return "0 | 0 | 0", False
+    
+    # Try parsing table format first (for Grok/Qwen)
     lines = [line.strip() for line in response_text.strip().split('\n')]
     data_rows = []
     for line in lines:
-        if re.match(r'^\|\s*\d+', line):  # Row starts with | and a number
+        if re.match(r'^\|\s*[\d,]+', line):  # Row starts with | and contains numbers/commas
             data_rows.append(line)
     
-    print(f"   Found {len(data_rows)} coordinate data rows")
+    print(f"   Found {len(data_rows)} coordinate data rows in table format")
     
-    if not data_rows:
-        print("❌ No coordinate data found in response")
-        return "0 | 0 | 0", False
-
     coordinates = []
-    for i, row in enumerate(data_rows):
-        cells = [cell.strip() for cell in row.strip('|').split('|')]
-        print(f"   Processing row {i+1}/{len(data_rows)}: {cells[:3] if len(cells) >= 3 else cells}")
+    
+    # Parse table format (enhanced for both 2-column and 3-column tables)
+    if data_rows:
+        print("   Processing table format...")
+        for i, row in enumerate(data_rows):
+            cells = [cell.strip() for cell in row.strip('|').split('|')]
+            print(f"   Processing row {i+1}/{len(data_rows)}: {cells}")
+            
+            if len(cells) >= 2:  # At least 2 cells
+                try:
+                    # Handle Qwen's malformed format: | 408,372 | 315 | 1 |
+                    first_cell = cells[0].strip()
+                    
+                    # Check if first cell contains comma-separated coordinates
+                    if ',' in first_cell:
+                        print(f"   🔄 Detected Qwen malformed format: '{first_cell}'")
+                        coord_parts = first_cell.split(',')
+                        if len(coord_parts) == 2:
+                            h = int(coord_parts[0].strip())
+                            v = int(coord_parts[1].strip())
+                            id_num = cells[2] if len(cells) > 2 and cells[2].strip().isdigit() else str(i+1)
+                            print(f"   ✅ Extracted from malformed: H={h}, V={v}, ID={id_num}")
+                        else:
+                            print(f"   ⚠️ Invalid comma format in '{first_cell}', skipping")
+                            continue
+                    
+                    elif len(cells) >= 3:
+                        # Standard 3-column format: | H | V | ID |
+                        h = int(cells[0])
+                        v = int(cells[1])
+                        id_num = cells[2] if cells[2].isdigit() else str(i+1)
+                        print(f"   ✅ Standard 3-column format: H={h}, V={v}, ID={id_num}")
+                    
+                    elif len(cells) == 2:
+                        # 2-column format: | H | V | (no ID column)
+                        h = int(cells[0])
+                        v = int(cells[1])
+                        id_num = str(i+1)  # Auto-generate ID
+                        print(f"   ✅ 2-column format detected: H={h}, V={v}, ID={id_num} (auto-generated)")
+                    
+                    else:
+                        print(f"   ⚠️ Insufficient cells in row, skipping")
+                        continue
+                    
+                    # Validate coordinates
+                    max_width = max(original_width, new_width) * 2
+                    max_height = max(original_height, new_height) * 2
+                    
+                    if 0 <= h <= max_width and 0 <= v <= max_height:
+                        if needs_scaling:
+                            scaled_h = int(h * (original_width / new_width))
+                            scaled_v = int(v * (original_height / new_height))
+                            print(f"   📐 Scaled: ({h},{v}) → ({scaled_h},{scaled_v})")
+                            coordinates.append((scaled_h, scaled_v, id_num))
+                        else:
+                            print(f"   ✅ Using coordinates: ({h},{v})")
+                            coordinates.append((h, v, id_num))
+                    else:
+                        print(f"   ⚠️ Coordinate {h},{v} out of bounds (max: {max_width}x{max_height}), skipping")
+                    
+                except (ValueError, IndexError) as e:
+                    print(f"   ⚠️ Error parsing row: {e}")
+                    continue
+
+    # If no table format found, try parsing natural language coordinates (for LLaVA)
+    elif not data_rows:
+        print("   No table format found, trying natural language parsing...")
         
-        if len(cells) >= 3:
-            try:
-                h = int(cells[0])
-                v = int(cells[1])
-                id_num = cells[2] if cells[2].isdigit() else "0"
+        # Look for coordinate patterns - order matters, more specific first
+        coord_patterns = [
+            # LLaVA bounding box format: "between (x1,y1) and (x2,y2)" or "roughly between (x1,y1) and (x2,y2)"
+            r'(?:between|roughly between)\s*\((\d*\.?\d+)\s*,\s*(\d*\.?\d+)\)\s*and\s*\((\d*\.?\d+)\s*,\s*(\d*\.?\d+)\)',
+            # Standard 4-number bounding box format: (x1, y1, x2, y2) - Convert to center
+            r'\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\)',
+            # Explicit center mentions with coordinates
+            r'center.*?(?:at|is).*?\((\d*\.?\d+)\s*,\s*(\d*\.?\d+)\)',
+            r'middle.*?(?:at|is).*?\((\d*\.?\d+)\s*,\s*(\d*\.?\d+)\)',
+            r'(?:center|middle).*?(\d*\.?\d+)\s*,\s*(\d*\.?\d+)',
+            # Standard 2-number format: (x,y) or (x, y) - handles both integers and decimals
+            r'\((\d*\.?\d+)\s*,\s*(\d*\.?\d+)\)',
+            # Coordinates with keywords
+            r'coordinates.*?(\d*\.?\d+)\s*,\s*(\d*\.?\d+)',
+            r'located.*?(\d*\.?\d+)\s*,\s*(\d*\.?\d+)',
+            r'position.*?(\d*\.?\d+)\s*,\s*(\d*\.?\d+)',
+            # Simple number pairs - handles decimals too
+            r'(\d*\.?\d+)\s*,\s*(\d*\.?\d+)',
+            # Labeled format: x: 123, y: 456
+            r'x[:\s]*(\d*\.?\d+).*?y[:\s]*(\d*\.?\d+)',
+            # Word format: horizontal 123, vertical 456  
+            r'horizontal[^\d]*(\d*\.?\d+).*?vertical[^\d]*(\d*\.?\d+)',
+        ]
+        
+        for pattern_idx, pattern in enumerate(coord_patterns):
+            matches = re.findall(pattern, response_text, re.IGNORECASE | re.DOTALL)
+            if matches:
+                print(f"   Found {len(matches)} coordinate matches with pattern {pattern_idx + 1}")
+                print(f"   Pattern: {pattern}")
+                for i, match in enumerate(matches):
+                    try:
+                        if pattern_idx == 0:
+                            # Handle LLaVA bounding box format: "between (0.539,0.740) and (1.000,0.862)"
+                            x1, y1, x2, y2 = float(match[0]), float(match[1]), float(match[2]), float(match[3])
+                            
+                            print(f"   🔄 LLaVA bounding box detected: ({x1:.3f},{y1:.3f}) to ({x2:.3f},{y2:.3f})")
+                            
+                            # Check if these are ratios (0-1 range) and convert to pixels
+                            if all(0 <= val <= 1 for val in [x1, y1, x2, y2]):
+                                # Convert ratios to pixel coordinates
+                                x1_px = int(x1 * new_width)
+                                y1_px = int(y1 * new_height)
+                                x2_px = int(x2 * new_width)
+                                y2_px = int(y2 * new_height)
+                                
+                                # Calculate center point from bounding box
+                                h = (x1_px + x2_px) // 2
+                                v = (y1_px + y2_px) // 2
+                                
+                                print(f"   🔄 Converting ratio bounding box to pixels:")
+                                print(f"       Ratio box: ({x1:.3f},{y1:.3f}) to ({x2:.3f},{y2:.3f})")
+                                print(f"       Pixel box: ({x1_px},{y1_px}) to ({x2_px},{y2_px})")
+                                print(f"       Center: ({h},{v})")
+                            else:
+                                # Already in pixel coordinates
+                                h = int((x1 + x2) // 2)
+                                v = int((y1 + y2) // 2)
+                                print(f"   ✅ Pixel bounding box, center: ({h},{v})")
+                            
+                        elif pattern_idx == 1 and len(match) == 4:
+                            # Handle standard 4-number bounding box format: (x1, y1, x2, y2)
+                            x1, y1, x2, y2 = int(match[0]), int(match[1]), int(match[2]), int(match[3])
+                            
+                            # Calculate center point from bounding box
+                            h = (x1 + x2) // 2
+                            v = (y1 + y2) // 2
+                            
+                            print(f"   🔄 Converting integer bounding box {i+1}: ({x1},{y1},{x2},{y2}) → Center({h},{v})")
+                            
+                        elif len(match) >= 2:
+                            # Handle 2-number format: (x, y) - can be integers or decimals
+                            h_val, v_val = float(match[0]), float(match[1])
+                            
+                            # Check if these are ratios (0-1 range) and convert to pixels
+                            if 0 <= h_val <= 1 and 0 <= v_val <= 1:
+                                h = int(h_val * new_width)
+                                v = int(v_val * new_height)
+                                print(f"   🔄 Converting ratio coordinates {i+1}: ({h_val:.3f},{v_val:.3f}) → Pixels({h},{v})")
+                            else:
+                                # Assume they're already pixel values
+                                h, v = int(h_val), int(v_val)
+                                print(f"   ✅ Found pixel coordinates {i+1}: ({h},{v})")
+                        else:
+                            continue
+                        
+                        # Validate coordinates
+                        max_width = max(original_width, new_width) * 2
+                        max_height = max(original_height, new_height) * 2
+                        
+                        if 0 <= h <= max_width and 0 <= v <= max_height:
+                            if needs_scaling:
+                                scaled_h = int(h * (original_width / new_width))
+                                scaled_v = int(v * (original_height / new_height))
+                                print(f"   📐 Scaled coord {i+1}: ({h},{v}) → ({scaled_h},{scaled_v})")
+                                coordinates.append((scaled_h, scaled_v, str(i+1)))
+                            else:
+                                print(f"   ✅ Direct coord {i+1}: ({h},{v})")
+                                coordinates.append((h, v, str(i+1)))
+                        else:
+                            print(f"   ⚠️ Coordinate {h},{v} out of bounds (max: {max_width}x{max_height}), skipping")
+                            
+                    except (ValueError, IndexError) as e:
+                        print(f"   ⚠️ Error parsing coordinate {i+1}: {e}")
+                        continue
                 
-                if needs_scaling:
-                    # Rescale coordinates to original resolution
-                    scaled_h = int(h * (original_width / new_width))
-                    scaled_v = int(v * (original_height / new_height))
-                    print(f"   🎯 Row {i+1}: Raw({h},{v}) → Scaled({scaled_h},{scaled_v}) [ID: {id_num}]")
-                    coordinates.append((scaled_h, scaled_v, id_num))
-                else:
-                    # Use coordinates as-is
-                    print(f"   🎯 Row {i+1}: Direct coordinates({h},{v}) [ID: {id_num}]")
-                    coordinates.append((h, v, id_num))
-                
-            except Exception as e:
-                print(f"   ⚠️ Skipping invalid row: {e}")
+                if coordinates:  # If we found valid coordinates, stop trying other patterns
+                    break
 
     if not coordinates:
         print("❌ No valid coordinates extracted")
         return "0 | 0 | 0", False
 
-    # Check if all coordinates are (0,0) - means no objects found
+    # Check if all coordinates are (0,0)
     non_zero_coords = [(h, v, id_num) for h, v, id_num in coordinates if h != 0 or v != 0]
     if not non_zero_coords:
         print("❌ All coordinates are (0,0) - no objects detected")
         return "0 | 0 | 0", False
 
-    print(f"✅ Successfully extracted {len(non_zero_coords)} valid coordinate(s)")
+    print(f"✅ Successfully extracted {len(non_zero_coords)} valid center point(s)")
     
     recognized = True
     if len(non_zero_coords) == 1:
@@ -451,23 +616,104 @@ def text_to_speech(text: str) -> None:
     except Exception as e:
         print(f"🔇 TTS failed: {e} - continuing without audio")
 
-def show_image_with_star(image_path: str, x: int, y: int, star_size: int = 20):
+def show_image_with_star(image_path: str, x: int, y: int, star_size: int = 30):
     """
     Display the image and draw a star at (x, y).
+    Enhanced with better star drawing and validation.
     """
-    with Image.open(image_path) as img:
-        draw = ImageDraw.Draw(img)
-
-        # Calculate star points (5-pointed star)
-        points = []
-        for i in range(5):
-            angle = math.radians(i * 144 - 90)
-            outer_x = x + star_size * math.cos(angle)
-            outer_y = y + star_size * math.sin(angle)
-            points.append((outer_x, outer_y))
-        draw.polygon(points, fill="yellow", outline="red")
-
-        img.show()
+    print(f"🎨 Drawing star at coordinates ({x}, {y}) with size {star_size}")
+    
+    try:
+        with Image.open(image_path) as img:
+            # Create a copy to avoid modifying the original
+            img_copy = img.copy()
+            draw = ImageDraw.Draw(img_copy)
+            
+            # Get image dimensions for validation
+            img_width, img_height = img_copy.size
+            print(f"   📐 Image dimensions: {img_width}x{img_height}")
+            
+            # Validate coordinates are within image bounds
+            if not (0 <= x <= img_width and 0 <= y <= img_height):
+                print(f"   ⚠️ Coordinates ({x}, {y}) are outside image bounds!")
+                print(f"   📍 Adjusting coordinates to fit within image...")
+                x = max(0, min(x, img_width - 1))
+                y = max(0, min(y, img_height - 1))
+                print(f"   ✅ Adjusted coordinates: ({x}, {y})")
+            
+            # Draw a larger, more visible star
+            # Method 1: Draw a filled circle first (easier to see)
+            circle_radius = star_size // 2
+            circle_bbox = [
+                x - circle_radius, y - circle_radius,
+                x + circle_radius, y + circle_radius
+            ]
+            draw.ellipse(circle_bbox, fill="yellow", outline="red", width=3)
+            
+            # Method 2: Draw a 5-pointed star on top
+            import math
+            star_points = []
+            for i in range(10):  # 10 points for a 5-pointed star (outer and inner points)
+                angle = math.radians(i * 36 - 90)  # Start from top
+                if i % 2 == 0:  # Outer points
+                    radius = star_size
+                else:  # Inner points
+                    radius = star_size * 0.4
+                
+                point_x = x + radius * math.cos(angle)
+                point_y = y + radius * math.sin(angle)
+                star_points.append((point_x, point_y))
+            
+            # Draw the star
+            draw.polygon(star_points, fill="gold", outline="red", width=2)
+            
+            # Add a small cross at the exact center for precision
+            cross_size = 5
+            draw.line([x - cross_size, y, x + cross_size, y], fill="black", width=2)
+            draw.line([x, y - cross_size, x, y + cross_size], fill="black", width=2)
+            
+            # Add text label near the star
+            try:
+                # Try to use a font, fallback to default if not available
+                from PIL import ImageFont
+                try:
+                    font = ImageFont.truetype("Arial.ttf", 16)
+                except:
+                    font = ImageFont.load_default()
+            except ImportError:
+                font = None
+            
+            text = f"({x},{y})"
+            text_x, text_y = x + star_size + 5, y - 10
+            
+            # Ensure text is within image bounds
+            if text_x + 60 > img_width:
+                text_x = x - star_size - 60
+            if text_y < 0:
+                text_y = y + star_size + 5
+                
+            draw.text((text_x, text_y), text, fill="black", font=font)
+            
+            print(f"   ⭐ Star drawn successfully at ({x}, {y})")
+            print(f"   🖼️ Displaying annotated image...")
+            
+            # Show the image
+            img_copy.show()
+            
+            # Optionally save the annotated image
+            save_path = image_path.replace('.jpg', '_annotated.jpg')
+            img_copy.save(save_path)
+            print(f"   💾 Annotated image saved as: {save_path}")
+            
+    except Exception as e:
+        print(f"   ❌ Error drawing star: {e}")
+        # Fallback: show original image without annotation
+        try:
+            with Image.open(image_path) as img:
+                img.show()
+                print("   📷 Showing original image without annotation")
+        except Exception as e2:
+            print(f"   ❌ Error showing image: {e2}")
 
 def get_vlm_choice() -> str:
     """
@@ -685,87 +931,156 @@ def get_input_mode() -> str:
     while True:
         choice = input("Choose input mode (1 for Voice, 2 for Text): ").strip()
         if choice == "1":
-            return "voice"
+            print("\n🎙️ Initiating voice input...")
+            voice_result = get_voice_input()
+            
+            # Display final result clearly
+            print("\n" + "🔥"*60)
+            print("✅ FINAL VOICE COMMAND CAPTURED")
+            print("🔥"*60)
+            print(f"📢 Your Command: '{voice_result}'")
+            print("🔥"*60)
+            
+            return voice_result
+            
         elif choice == "2":
-            return "text"
+            print("\n⌨️  Text input mode selected")
+            text_result = input("💬 Enter your command: ").strip()
+            
+            # Display text input result for consistency
+            print("\n" + "📝"*60)
+            print("✅ TEXT COMMAND ENTERED")
+            print("📝"*60)
+            print(f"⌨️  Your Command: '{text_result}'")
+            print("📝"*60)
+            
+            return text_result
         else:
             print("❌ Invalid choice. Please enter 1 or 2.")
 
 def get_voice_input() -> str:
     """
-    Capture voice input and convert it to text using speech recognition.
-    Returns the recognized text or raises an exception if recognition fails.
+    Capture and process voice input with fallback to text.
+    Enhanced to clearly display recognized text in terminal.
     """
-    print("\n🎙️ Voice Input Mode")
-    print("=" * 40)
-    print("🔴 Preparing microphone...")
-    
-    # Initialize recognizer and microphone
-    recognizer = sr.Recognizer()
-    microphone = sr.Microphone()
-    
-    # Adjust for ambient noise
-    print("🔧 Calibrating microphone for ambient noise...")
-    with microphone as source:
-        recognizer.adjust_for_ambient_noise(source, duration=1)
-    
-    print("🎤 Ready to listen! Please speak your command...")
-    print("   (e.g., 'please grab the apple to me' or '请帮我拿可乐给我')")
-    print("   💡 Tip: Speak clearly and wait for the beep")
-    
     try:
-        # Listen for audio input
+        print("\n🎙️ Voice Input Mode")
+        print("=" * 40)
+        print("🔴 Preparing microphone...")
+        
+        recognizer = sr.Recognizer()
+        microphone = sr.Microphone()
+        
+        # Calibrate microphone
+        print("🔧 Calibrating microphone for ambient noise...")
+        with microphone as source:
+            recognizer.adjust_for_ambient_noise(source, duration=1)
+        
+        print("🎤 Ready to listen! Please speak your command...")
+        print("   💡 Tip: Speak clearly and wait for processing")
+        
+        # Record audio
         with microphone as source:
             print("🔴 Recording... (speak now)")
             audio = recognizer.listen(source, timeout=10, phrase_time_limit=8)
             print("⏹️  Recording complete, processing...")
         
-        # Try to recognize speech using Google's speech recognition
         print("🔍 Converting speech to text...")
-        try:
-            # First try with English
-            user_input = recognizer.recognize_google(audio, language='en-US')
-            print(f"✅ Speech recognized (English): '{user_input}'")
-            return user_input
-        except sr.UnknownValueError:
-            # If English fails, try Chinese
-            try:
-                user_input = recognizer.recognize_google(audio, language='zh-CN')
-                print(f"✅ Speech recognized (Chinese): '{user_input}'")
-                return user_input
-            except sr.UnknownValueError:
-                raise Exception("Could not understand the audio. Please try speaking more clearly.")
         
-    except sr.WaitTimeoutError:
-        raise Exception("No speech detected within timeout period. Please try again.")
-    except sr.RequestError as e:
-        # Fallback to offline recognition if available
+        # Try English first
         try:
-            print("🔄 Internet connection issue, trying offline recognition...")
-            user_input = recognizer.recognize_sphinx(audio)
-            print(f"✅ Speech recognized (Offline): '{user_input}'")
-            return user_input
+            result = recognizer.recognize_google(audio, language="en-US")
+            print("\n" + "="*50)
+            print("🎯 VOICE RECOGNITION RESULT")
+            print("="*50)
+            print(f"📝 Language: English")
+            print(f"🗣️  Recognized Text: '{result}'")
+            print("="*50)
+            return result
+        except sr.UnknownValueError:
+            print("   ❌ English recognition failed, trying Chinese...")
+        
+        # Try Chinese
+        try:
+            result = recognizer.recognize_google(audio, language="zh-CN")
+            print("\n" + "="*50)
+            print("🎯 VOICE RECOGNITION RESULT")
+            print("="*50)
+            print(f"📝 Language: Chinese")
+            print(f"🗣️  Recognized Text: '{result}'")
+            print("="*50)
+            return result
+        except sr.UnknownValueError:
+            print("   ❌ Chinese recognition failed, trying offline...")
+        
+        # Try offline recognition
+        try:
+            print("🔄 Trying offline recognition...")
+            result = recognizer.recognize_sphinx(audio)
+            print("\n" + "="*50)
+            print("🎯 VOICE RECOGNITION RESULT")
+            print("="*50)
+            print(f"📝 Language: Offline Recognition")
+            print(f"🗣️  Recognized Text: '{result}'")
+            print("="*50)
+            return result
         except:
-            raise Exception(f"Speech recognition service error: {e}")
+            print("   ❌ Offline recognition failed")
+        
+        raise Exception("Could not understand the audio. Please try speaking more clearly.")
+        
     except Exception as e:
-        raise Exception(f"Voice input error: {e}")
+        print(f"❌ Voice input failed: {e}")
+        print("🔄 Falling back to text input...")
+        return input("\n💬 Please enter your command manually: ").strip()
 
 def get_user_input() -> str:
     """
-    Get user input either through voice or text based on user choice.
-    Returns the user's command as text.
+    Get user input via voice or text mode selection.
+    Enhanced to clearly display recognized text.
     """
-    input_mode = get_input_mode()
+    print("\n🎤 Input Mode Selection")
+    print("=" * 50)
+    print("1. 🎙️  Voice Input")
+    print("   - Speak your command")
+    print("   - Automatically converted to text")
+    print("   - Supports English and Chinese")
+    print("")
+    print("2. ⌨️  Text Input") 
+    print("   - Type your command")
+    print("   - Current default mode")
+    print("   - Supports English and Chinese")
+    print("=" * 50)
     
-    if input_mode == "voice":
-        try:
-            return get_voice_input()
-        except Exception as e:
-            print(f"❌ Voice input failed: {e}")
-            print("🔄 Falling back to text input...")
-            return input("\n💬 Please enter your command manually: ").strip()
-    else:
-        return input("\n💬 Enter your command (e.g., 'please grab the apple to me' or '请帮我拿可乐给我'): ").strip()
+    while True:
+        choice = input("Choose input mode (1 for Voice, 2 for Text): ").strip()
+        if choice == "1":
+            print("\n🎙️ Initiating voice input...")
+            voice_result = get_voice_input()
+            
+            # Display final result clearly
+            print("\n" + "🔥"*60)
+            print("✅ FINAL VOICE COMMAND CAPTURED")
+            print("🔥"*60)
+            print(f"📢 Your Command: '{voice_result}'")
+            print("🔥"*60)
+            
+            return voice_result
+            
+        elif choice == "2":
+            print("\n⌨️  Text input mode selected")
+            text_result = input("💬 Enter your command: ").strip()
+            
+            # Display text input result for consistency
+            print("\n" + "📝"*60)
+            print("✅ TEXT COMMAND ENTERED")
+            print("📝"*60)
+            print(f"⌨️  Your Command: '{text_result}'")
+            print("📝"*60)
+            
+            return text_result
+        else:
+            print("❌ Invalid choice. Please enter 1 or 2.")
 
 def main():
     """
@@ -911,6 +1226,120 @@ def test_extract_object():
             print(f"'{case}' -> '{result}'")
         except Exception as e:
             print(f"'{case}' -> ERROR: {e}")
+
+def test_llava_prompts():
+    """
+    Test different prompt styles with LLaVA to see which works best.
+    """
+    object_str = "keyboard"
+    image_path = "/Users/yanbo/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"
+    
+    # Test different prompt styles
+    prompts = [
+        # Style 1: Very simple
+        f"Where is the {object_str} in this image? Give me coordinates (x, y).",
+        
+        # Style 2: Direct question
+        f"Can you see a {object_str}? If yes, what are its center coordinates?",
+        
+        # Style 3: Step by step
+        f"Look at this image. Find the {object_str}. Tell me where its center is located using coordinates (x, y).",
+        
+        # Style 4: One sentence
+        f"Find the {object_str} and give me its center point coordinates.",
+        
+        # Style 5: With example
+        f"Locate the {object_str} in this image and provide center coordinates like (100, 200)."
+    ]
+    
+    print(f"\n🧪 Testing {len(prompts)} different prompts with LLaVA...")
+    
+    for i, prompt in enumerate(prompts, 1):
+        print(f"\n--- Test {i}/5 ---")
+        print(f"Prompt: {prompt}")
+        try:
+            response = call_local_vlm_api(prompt, image_path)
+            print(f"Response: {response[:200]}...")
+            
+            # Try to extract coordinates
+            coord_match = re.search(r'\((\d+)\s*,\s*(\d+)\)', response)
+            if coord_match:
+                x, y = coord_match.groups()
+                print(f"✅ Found coordinates: ({x}, {y})")
+            else:
+                print("❌ No coordinates found in response")
+                
+        except Exception as e:
+            print(f"❌ Error: {e}")
+        
+        print("-" * 40)
+
+# Add this to your main function for testing (uncomment when needed)
+# test_llava_prompts()
+
+def test_coordinate_variance():
+    """
+    Test if models return different coordinates for different images/objects.
+    """
+    test_cases = [
+        ("keyboard", "/Users/yanbo/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"),
+        ("mouse", "/Users/yanbo/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"),
+        ("cup", "/Users/yanbo/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"),
+    ]
+    
+    print("🧪 Testing coordinate variance across different objects...")
+    
+    for object_str, image_path in test_cases:
+        print(f"\n--- Testing: {object_str} ---")
+        
+        # Test with simplified prompt
+        prompt = f"Look at this image. Where is the {object_str}? Give coordinates (x,y)."
+        
+        try:
+            response = call_local_vlm_api(prompt, image_path)
+            print(f"Response: {response[:100]}...")
+            
+            # Extract coordinates
+            coord_match = re.search(r'\((\d+)\s*,\s*(\d+)\)', response)
+            if coord_match:
+                x, y = coord_match.groups()
+                print(f"Coordinates: ({x}, {y})")
+                
+                # Check if it's the suspicious 320,240
+                if x == "320" and y == "240":
+                    print("❌ SUSPICIOUS: Got 320,240 again!")
+                else:
+                    print("✅ Different coordinates detected")
+            else:
+                print("No coordinates found")
+                
+        except Exception as e:
+            print(f"Error: {e}")
+
+# Add this to test (uncomment when needed):
+# test_coordinate_variance()
+
+def validate_coordinates(h: int, v: int, image_width: int, image_height: int) -> bool:
+    """
+    Validate if coordinates seem realistic (not hardcoded center).
+    """
+    # Check if coordinates are exactly center (potential hardcoded response)
+    center_h = image_width // 2
+    center_v = image_height // 2
+    
+    # If coordinates are exactly center or very close, it might be hardcoded
+    if abs(h - center_h) < 10 and abs(v - center_v) < 10:
+        print(f"   ⚠️ Warning: Coordinates ({h},{v}) are suspiciously close to image center ({center_h},{center_v})")
+        return False
+    
+    # Check if coordinates are common example values
+    common_examples = [(320, 240), (100, 200), (150, 100)]
+    for ex_h, ex_v in common_examples:
+        if h == ex_h and v == ex_v:
+            print(f"   ⚠️ Warning: Coordinates ({h},{v}) match common example values")
+            return False
+    
+    return True
 
 if __name__ == "__main__":
     main()
