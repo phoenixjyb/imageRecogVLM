@@ -124,6 +124,104 @@ flowchart TD
         R
     end
 
+    %% Chinese Translation Engine
+    subgraph Chinese_Translation_Engine ["`🇨🇳 **Chinese Translation Engine**`"]
+        D["`🔄 **Chinese Translation**
+    Detect Language
+    Translate to English`"]
+        E["`📚 **Pattern Matching**
+    Analyze Sentence Structure
+    Match with Object Dictionary`"]
+        F["`🔤 **Object Translation**
+    Translate Detected Objects
+    Map to English Equivalents`"]
+        
+        II["`📋 **Command Patterns**
+    请.*?拿.*?给我
+    帮我.*?拿.*
+    找.*?给我`"]
+        
+        JJ["`📖 **Object Dictionary**
+    可乐→coke
+    苹果→apple
+    书→book`"]
+        
+        D --> E
+        E --> F
+        II --> E
+        JJ --> F
+    end
+    
+    %% VLM Processing Pipeline
+    subgraph VLM_Processing_Pipeline ["`🚀 **VLM Processing Pipeline**`"]
+        K["`☁️ **Grok-4 Cloud**
+    High Accuracy
+    English Optimized`"]
+        L["`☁️ **Qwen-VL Cloud**
+    Chinese Optimized
+    Good Accuracy`"]
+        M["`🏠 **LLaVA Local**
+    Privacy Focused
+    Free Processing`"]
+        
+        FF["`🔍 **Grok-4 API**
+    Analyze Image
+    Generate Response`"]
+        GG["`🔍 **Qwen-VL API**
+    Analyze Image
+    Generate Response`"]
+        HH["`🔍 **LLaVA Local API**
+    Analyze Image
+    Generate Response`"]
+        
+        K --> FF
+        L --> GG
+        M --> HH
+    end
+    
+    %% Image Processing
+    subgraph Image_Processing ["`🖼️ **Image Processing**`"]
+        Q["`📐 **Original Resolution**
+    95% Quality
+    Base64 Encoding`"]
+        R["`📏 **Local Resize**
+    85% Quality
+    Optimized Size`"]
+        
+        KK["`🔄 **Base64 Decode**
+    Convert to Image
+    Prepare for VLM`"]
+        LL["`📏 **Image Resizing**
+    Adjust to VLM Specs
+    Maintain Quality`"]
+        
+        Q --> KK
+        R --> LL
+    end
+    
+    %% Output Generation
+    subgraph Output_Generation ["`📤 **Output Generation**`"]
+        AA["`🔊 **Text-to-Speech**
+    Announce Results
+    Object Found/Not Found`"]
+        BB["`⭐ **Visual Annotation**
+    Overlay Stars
+    Annotate Objects`"]
+        CC["`💻 **macOS Say Command**
+    Execute TTS
+    System Voice`"]
+        DD["`🟡 **Yellow Star Overlay**
+    Draw Stars on Image
+    Indicate Coordinates`"]
+        EE["`🖥️ **Image Display**
+    Show Processed Image
+    With Annotations`"]
+        
+        AA --> CC
+        BB --> DD
+        DD --> EE
+    end
+    
     %% Styling
     classDef input fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     classDef processing fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
@@ -134,9 +232,10 @@ flowchart TD
     classDef error fill:#ffebee,stroke:#f44336,stroke-width:2px
     
     class A,B,C input
-    class D processing
-    class E,G cloud
-    class F,H local
+    class D,E,F processing
+    class G cloud
+    class H local
     class I,J,K,M core
     class N,O,P,Q,R output
     class L error
+```

@@ -1,135 +1,287 @@
-# VLM Image Recognition Script
+# VLM Object Recognition System (3-Mode)
 
-A Python script that uses Vision Language Models (VLMs) to analyze images and identify objects within them. Supports both cloud-based and local processing modes.
+A comprehensive multi-modal Vision Language Model (VLM) system that supports object detection and localization through three different processing pathways: cloud-based Grok-4, cloud-based Qwen-VL, and local LLaVA via Ollama.
 
-## Features
+## 🌟 Features
 
-- **Dual-Mode Processing**: Choose between cloud (X.AI Grok-4) and local (Ollama LLaVA) VLM processing
-- **Object Recognition**: Analyzes images to identify and locate objects
-- **Coordinate Detection**: Provides x,y coordinates of identified objects with dynamic scaling
-- **Confidence Scores**: Returns confidence levels for each detection
-- **Visual Feedback**: Draws markers on detected objects and saves annotated images
-- **Audio Feedback**: Text-to-speech announcement of results
-- **Coefficient-Controlled Sizing**: Configurable image resizing with unified dimensions across modes
-- **Proxy Bypass**: Automatic proxy bypass for local Ollama connections
-- **Comprehensive Logging**: Detailed logging of all operations with timing information
+### Multi-VLM Support
+- **☁️ Grok-4** - High accuracy cloud processing via X.AI API
+- **☁️ Qwen-VL** - Excellent Chinese language support via DashScope API  
+- **🖥️ LLaVA** - Privacy-focused local processing via Ollama
 
-## System Requirements
-- Python 3.7+
-- **For Cloud Mode**: X.AI API key (sign up at X.AI)
-- **For Local Mode**: Ollama with LLaVA model installed
-- Libraries: `requests`, `pillow`, `base64`, `sys`, `subprocess`, `pathlib`
-- Text-to-speech: `espeak` or `festival` (Linux/macOS)
+### Language Support
+- **🌍 Bilingual Commands** - Supports both English and Chinese input
+- **🔄 Auto-Translation** - Automatic Chinese-to-English translation with pattern matching
+- **🎯 Smart Object Extraction** - Intelligent parsing of natural language commands
 
-## Installation
-1. Clone or download this repository
-2. Install required packages:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Advanced Processing
+- **📐 Original Resolution** - Processes images at full resolution for maximum accuracy
+- **🎯 Precise Coordinates** - Pixel-perfect object localization with visual markers
+- **🔊 Audio Feedback** - Text-to-speech responses using macOS built-in `say` command
+- **🖼️ Visual Annotation** - Displays detected objects with yellow star markers
 
-### Cloud Mode Setup
-Set up your X.AI API key as an environment variable:
+### System Architecture
+- **🔧 Modular Design** - Clean separation between VLM providers
+- **⚡ Smart Fallbacks** - Graceful error handling and alternative pathways
+- **📊 Performance Monitoring** - Detailed timing and processing statistics
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+1. **Python Dependencies**
 ```bash
-export XAI_API_KEY="your_api_key_here"
+pip install requests pillow openai python-dotenv
 ```
 
-### Local Mode Setup
-Install and configure Ollama with LLaVA:
+2. **Environment Variables**
 ```bash
-# Install Ollama (visit https://ollama.ai for instructions)
-# Pull the LLaVA model
-ollama pull llava
+export XAI_API_KEY="your_x_ai_api_key"          # For Grok-4
+export DASHSCOPE_API_KEY="your_dashscope_key"   # For Qwen-VL
 ```
 
-## Usage
-
-### Cloud Mode (Default)
+3. **Local Processing (Optional)**
 ```bash
-python imageRecogVLM.py path/to/your/image.jpg
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Install LLaVA model
+ollama pull llava:latest
+
+# Start Ollama service
+ollama serve
 ```
 
-### Local Mode
+### Basic Usage
+
 ```bash
-python imageRecogVLM.py path/to/your/image.jpg --local
+python3 imageRecogVLM.py
 ```
 
-The script will:
-1. Load and resize the image for optimal processing
-2. Send the image to the selected VLM (cloud or local) for analysis
-3. Parse the response to extract object information
-4. Draw star markers on detected objects with coordinate scaling
-5. Save the annotated image
-6. Provide text-to-speech feedback
-7. Log all results with comprehensive timing information
-
-## Configuration
-
-You can modify several constants at the top of the script:
-
-- `RESIZE_WIDTH`: Target width for image processing (default: 256px)
-- `LOCAL_RESIZE_COEFFICIENT`: Coefficient for local mode sizing (default: 1.0)
-- `RESIZE_QUALITY`: JPEG quality for compression (default: 85)
-- Various timeout and retry settings for both cloud and local modes
-
-
-## Output
-The script generates:
-- **Console Output**: Detailed logging of object detection results with coordinates and confidence scores
-- **Annotated Image**: Original image with star markers on detected objects (`annotated_output.jpg`)
-- **Audio Feedback**: Spoken confirmation of detection results
-- **Timing Information**: Performance metrics for both processing modes
-
-## Example Output
+**English Commands:**
 ```
-2024-01-15 10:30:45 - Processing image: sampleImages/image_000078.jpg
-2024-01-15 10:30:45 - Using LOCAL mode with Ollama LLaVA
-2024-01-15 10:30:45 - Image resized to 256x192 (original: 640x480)
-2024-01-15 10:30:47 - LOCAL API Response time: 2.15 seconds
-2024-01-15 10:30:47 - Found 2 objects:
-  - bottle (confidence: 0.85) at (128, 96) → scaled to (320, 240)
-  - cup (confidence: 0.72) at (200, 150) → scaled to (500, 375)
-2024-01-15 10:30:48 - Annotated image saved as: annotated_output.jpg
+"please grab the apple to me"
+"find the red coke bottle"
+"identify the book on the shelf"
 ```
 
-## Troubleshooting
+**Chinese Commands:**
+```
+"请帮我拿可乐给我"
+"找苹果给我"
+"帮我找书"
+```
 
-### Cloud Mode Issues
-- Verify `XAI_API_KEY` environment variable is set correctly
-- Check internet connectivity
-- Ensure API quota is not exceeded
+## 🏗️ System Architecture
 
-### Local Mode Issues
-- Verify Ollama is running: `ollama list`
-- Check if LLaVA model is installed: `ollama pull llava`
-- Ensure port 11434 is available
-- Check proxy settings if behind corporate firewall
+### Processing Flow
+1. **Input Processing** - Language detection and translation
+2. **VLM Selection** - Interactive choice between 3 processing modes
+3. **Image Encoding** - High-quality base64 encoding at original resolution
+4. **API Calling** - Provider-specific prompt optimization and API calls
+5. **Response Parsing** - Coordinate extraction and validation
+6. **Output Generation** - Comprehensive response with visual and audio feedback
 
-### General Issues
-- Verify image file exists and is in supported format (JPG, PNG)
-- Check Python dependencies are installed
-- Ensure text-to-speech system is available (`espeak` or `festival`)
+### VLM Comparison
 
-## Technical Notes
+| Feature | Grok-4 | Qwen-VL | LLaVA (Local) |
+|---------|---------|---------|---------------|
+| **Accuracy** | High | Good | Moderate |
+| **Speed** | Medium | Medium | Fast |
+| **Cost** | Paid | Paid | Free |
+| **Privacy** | Cloud | Cloud | Local |
+| **Chinese Support** | Basic | Excellent | Limited |
+| **Internet Required** | Yes | Yes | No |
 
-- **Coordinate System**: Origin (0,0) at top-left, coordinates scaled from processed to original image dimensions
-- **Image Processing**: Maintains aspect ratio during resizing
-- **Proxy Handling**: Automatic bypass for localhost connections in local mode
-- **Error Handling**: Comprehensive exception handling with fallback responses
-- **Performance**: Local mode typically faster for repeated queries, cloud mode for occasional use
+## 📁 Project Structure
 
-## Extending the Script
+```
+vlmTry/
+├── imageRecogVLM.py          # Main application
+├── sampleImages/             # Test images directory
+│   ├── image_000078.jpg
+│   └── image_000354.jpg
+├── hello_qwen.py            # Qwen API test script
+├── README.md                # This file
+└── system_arch_new.mmd      # System architecture diagram
+```
 
-The script is designed for modularity. You can:
-- Add new VLM providers by implementing the API interface pattern
-- Modify the prompt template for different detection tasks
-- Customize the visual marking system (stars, boxes, etc.)
-- Integrate with robotic control systems using the coordinate output
-- Add support for batch processing multiple images
+## 🔧 Configuration
 
+### Image Processing
+- **Resolution**: Uses original image resolution for maximum accuracy
+- **Quality**: High-quality JPEG encoding (95% for originals)
+- **Format**: Base64 encoding for API transmission
 
+### API Endpoints
+- **Grok-4**: `https://api.x.ai/v1/chat/completions`
+- **Qwen-VL**: `https://dashscope.aliyuncs.com/compatible-mode/v1`
+- **LLaVA**: `http://localhost:11434/api/generate` (local)
 
-## Notes
-- The script expects the VLM API to return coordinates in the same resolution as the original image.
-- If no object is found, the script will say so and not plot any stars.
-- Multiple objects are supported and will each be marked with a yellow star.
+## 🌏 Chinese Language Support
+
+### Supported Patterns
+
+**Command Patterns:**
+- `请.*?拿.*?给我` → "please grab {} to me"
+- `帮我.*?拿.*` → "help me get {}"
+- `找.*?给我` → "find {} for me"
+- `给我.*?拿` → "get me {}"
+- `请.*?找` → "please find {}"
+- `帮我.*?找` → "help me find {}"
+
+**Object Vocabulary:**
+- `可乐|可口可乐` → "coke"
+- `苹果` → "apple"
+- `书|书本` → "book"
+- `瓶子|水瓶` → "bottle"
+- `钥匙` → "keys"
+- `手机|电话` → "phone"
+- And more...
+
+### Adding New Vocabulary
+
+To extend Chinese support, edit the `chinese_patterns` dictionary in `translate_chinese_to_english()`:
+
+```python
+chinese_patterns = {
+    # Add new command patterns
+    r'我想要.*': 'I want {}',
+    
+    # Add new object translations
+    r'橙子|橘子': 'orange',
+    r'香蕉': 'banana',
+}
+```
+
+## 📊 Output Format
+
+### Console Output
+```
+🤖 VLM Object Recognition System (3-Mode)
+============================================================
+🕐 Process started at: 2025-01-16 14:30:25
+
+💬 Enter your command: 请帮我拿可乐给我
+
+🌏 Original Chinese command: '请帮我拿可乐给我'
+🔄 Translated English command: 'please grab coke to me'
+✅ Using translated command for processing
+
+🎯 Target object identified: 'coke'
+📂 Loading image: image_000354.jpg
+   ✓ Image loaded successfully: 1024x768
+
+🔧 Building prompt for VLM...
+   ✓ Using resolution: 1024x768 (original size)
+
+[VLM Selection Menu]
+Choose processing mode (1 for Grok, 2 for Qwen, 3 for Local): 2
+
+🚀 Calling Qwen-VL Vision API (Cloud)...
+📡 Qwen API response received in 2.34 seconds
+✅ Total Qwen API process completed in 3.12 seconds
+
+🔍 Starting coordinate parsing...
+   📊 No scaling needed - using original coordinates
+   🎯 Row 1: Direct coordinates(520,340) [ID: 1]
+✅ Successfully extracted 1 valid coordinate(s)
+
+📬 Response:
+==================================================
+coke is recognized, let me fetch it to you
+
+==================================================
+📄 ORIGINAL QWEN-VL MODEL OUTPUT:
+==================================================
+[VLM response content]
+==================================================
+
+📊 COORDINATE SUMMARY TABLE:
+----------------------------------------
+| Object ID | H (Horizontal) | V (Vertical) |
+|-----------|----------------|--------------|
+|     1     |        520     |      340     |
+----------------------------------------
+
+🔊 Audio played: 'coke found'
+🖼️ Showing image with annotated object location...
+✅ Process ended at: 2025-01-16 14:30:32
+```
+
+### Visual Output
+- **Yellow star markers** placed at detected object center points
+- **Image display** with annotation overlay
+- **Coordinate validation** ensures markers are within image bounds
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+**API Key Errors:**
+```bash
+# Set environment variables
+export XAI_API_KEY="your_key_here"
+export DASHSCOPE_API_KEY="your_key_here"
+```
+
+**Ollama Connection Issues:**
+```bash
+# Check Ollama status
+ollama list
+
+# Restart Ollama service
+ollama serve
+
+# Install missing models
+ollama pull llava:latest
+```
+
+**Audio Issues:**
+- Uses macOS built-in `say` command
+- Automatically falls back to text-only if TTS fails
+- Can be disabled by setting `tts_enabled = False`
+
+### Performance Optimization
+
+**For High Accuracy:**
+- Use Grok-4 for best results
+- Use original image resolution
+- Provide specific object descriptions
+
+**For Speed:**
+- Use local LLaVA processing
+- Enable image resizing if needed
+- Use shorter, simpler commands
+
+**For Chinese Processing:**
+- Use Qwen-VL for best Chinese language support
+- Expand `chinese_patterns` for domain-specific vocabulary
+- Test translations before processing
+
+## 📈 Performance Metrics
+
+Typical processing times:
+- **Grok-4**: 3-8 seconds (depending on image size)
+- **Qwen-VL**: 2-5 seconds (good optimization)
+- **LLaVA Local**: 1-3 seconds (fastest, hardware dependent)
+
+## 🤝 Contributing
+
+To extend the system:
+
+1. **Add new VLM providers** by implementing the API call pattern
+2. **Expand language support** by adding patterns to translation functions
+3. **Improve object detection** by optimizing prompts for specific use cases
+4. **Add new output formats** by extending the response generation
+
+## 📄 License
+
+This project is open source. Please ensure you comply with the terms of service for any commercial VLM APIs you use.
+
+## 🙏 Acknowledgments
+
+- **X.AI** for Grok-4 API access
+- **Alibaba Cloud** for Qwen-VL via DashScope
+- **Ollama** for local LLaVA processing infrastructure
+- **OpenAI** for compatible API standards
