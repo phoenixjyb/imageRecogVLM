@@ -3,3 +3,5 @@ pillow
 gtts
 pygame
 tqdm
+openai
+httpx[socks]
