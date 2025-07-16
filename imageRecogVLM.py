@@ -17,6 +17,9 @@ import json
 # Constants
 RESIZE_WIDTH = 256  # Width to resize images to before sending to VLM
 LOCAL_RESIZE_COEFFICIENT = 1.0  # Coefficient to control local resize width (1.0 = same as cloud)
+# Constants
+RESIZE_WIDTH = 256  # Width to resize images to before sending to VLM
+LOCAL_RESIZE_COEFFICIENT = 1.0  # Coefficient to control local resize width (1.0 = same as cloud)
 LOCAL_RESIZE_WIDTH = int(RESIZE_WIDTH * LOCAL_RESIZE_COEFFICIENT)  # Local VLM processing width
 
 # Securely load API key from environment variable (optional for local mode)
@@ -130,7 +133,7 @@ def call_grok4_api(prompt: str, image_path: str, api_key: str) -> str:
     print("🔄 Preparing API request...")
     api_start_time = time.time()
     
-    base64_image, original_width, original_height, new_width, new_height = encode_image(image_path, RESIZE_WIDTH)
+    base64_image, original_width, original_height, new_width, new_height = encode_image(image_path)
     url = "https://api.x.ai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
@@ -249,7 +252,7 @@ def generate_response(object_str: str, recognized: bool, coord_str: str, raw_res
     # Add original model output section
     if raw_response:
         response_parts.append("\n" + "="*50)
-        response_parts.append("📄 ORIGINAL MODEL OUTPUT:")
+        response_parts.append("📄 ORIGINAL GROK MODEL OUTPUT:")
         response_parts.append("="*50)
         response_parts.append(raw_response)
         response_parts.append("="*50)
@@ -361,13 +364,13 @@ def get_vlm_choice() -> str:
 
 def call_local_vlm_api(prompt: str, image_path: str) -> str:
     """
-    Call local LLaVA VLM via Ollama with prompt and image.
+    Call local Gemma3 VLM via Ollama with prompt and image.
     Returns raw text content for display.
     """
     print("🔄 Preparing local VLM request...")
     api_start_time = time.time()
     
-    # Encode image to base64 with size based on LOCAL_RESIZE_WIDTH
+    # Encode image to base64 with smaller size for local processing
     base64_image, original_width, original_height, new_width, new_height = encode_image(image_path, LOCAL_RESIZE_WIDTH)
     
     # Ollama API endpoint (default local)
@@ -479,18 +482,13 @@ def main():
         object_str = extract_object(user_input)
         print(f"   ✓ Target object identified: '{object_str}'")
         
-        print(f"\n📝 Building prompt for VLM...")
+        print(f"\n� Building prompt for VLM...")
+        # Get dimensions by encoding the image first
+        _, original_width, original_height, new_width, new_height = encode_image(image_path)
+        print(f"   ✓ Dimension scaling: {original_width}x{original_height} → {new_width}x{new_height}")
+        
         # --- Get user choice for VLM processing ---
         vlm_choice = get_vlm_choice()
-        
-        # Get dimensions by encoding the image with appropriate size based on mode
-        if vlm_choice == "cloud":
-            resize_width = RESIZE_WIDTH
-        else:  # local
-            resize_width = LOCAL_RESIZE_WIDTH
-            
-        _, original_width, original_height, new_width, new_height = encode_image(image_path, resize_width)
-        print(f"   ✓ Dimension scaling: {original_width}x{original_height} → {new_width}x{new_height}")
         
         # Build appropriate prompt based on VLM choice
         if vlm_choice == "cloud":
@@ -511,7 +509,7 @@ def main():
             if not check_ollama_availability():
                 raise Exception("Ollama service is not available or LLaVA model is not found. Please check your Ollama installation.")
             
-            print(f"\n🖥️  Calling Local LLaVA via Ollama...")
+            print(f"\n�️  Calling Local Gemma3/LLaVA via Ollama...")
             response_text = call_local_vlm_api(prompt, image_path)
         
         print(f"\n🔄 Processing API response...")

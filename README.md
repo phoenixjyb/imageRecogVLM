@@ -1,83 +1,133 @@
-# README.md: VLM Object Recognition and Star Plotting
+# VLM Image Recognition Script
 
-## Project Overview
-This Python program integrates with a Vision-Language Model (VLM), such as Grok4 from xAI, to recognize objects in images based on user text commands and visually mark them with stars. It processes inputs like "please grab the coke cola to me", extracts the object (e.g., "coke cola"), queries the VLM via API with an image, parses coordinates (H for horizontal, V for vertical; origin at top-left), handles multiple objects with unique IDs, generates recognition responses, and outputs via text and Text-to-Speech (TTS).
+A Python script that uses Vision Language Models (VLMs) to analyze images and identify objects within them. Supports both cloud-based and local processing modes.
 
-Key Features:
-- Object extraction from natural language commands.
-- API integration with Grok4 for multimodal (text + image) processing.
-- Coordinate parsing with support for single/multiple objects.
-- Success/failure responses with TTS playback.
-- Predefined image path for simplicity.
-- Visual marking of detected objects on the image.
+## Features
 
-The program is designed for modularity and can be extended for robotics or assistive tech applications.
+- **Dual-Mode Processing**: Choose between cloud (X.AI Grok-4) and local (Ollama LLaVA) VLM processing
+- **Object Recognition**: Analyzes images to identify and locate objects
+- **Coordinate Detection**: Provides x,y coordinates of identified objects with dynamic scaling
+- **Confidence Scores**: Returns confidence levels for each detection
+- **Visual Feedback**: Draws markers on detected objects and saves annotated images
+- **Audio Feedback**: Text-to-speech announcement of results
+- **Coefficient-Controlled Sizing**: Configurable image resizing with unified dimensions across modes
+- **Proxy Bypass**: Automatic proxy bypass for local Ollama connections
+- **Comprehensive Logging**: Detailed logging of all operations with timing information
 
 ## System Requirements
-- Python 3.x
-- Libraries: `requests`, `re`, `random`, `base64`, `PIL` (Pillow), `gtts`, `pygame`
-- Environment variable: `GROK4_API_KEY` (set your xAI API key)
-- Internet access for API calls and TTS (gTTS requires online synthesis)
+- Python 3.7+
+- **For Cloud Mode**: X.AI API key (sign up at X.AI)
+- **For Local Mode**: Ollama with LLaVA model installed
+- Libraries: `requests`, `pillow`, `base64`, `sys`, `subprocess`, `pathlib`
+- Text-to-speech: `espeak` or `festival` (Linux/macOS)
 
-Installation:
+## Installation
+1. Clone or download this repository
+2. Install required packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Cloud Mode Setup
+Set up your X.AI API key as an environment variable:
 ```bash
-pip install requests pillow gtts pygame
+export XAI_API_KEY="your_api_key_here"
+```
+
+### Local Mode Setup
+Install and configure Ollama with LLaVA:
+```bash
+# Install Ollama (visit https://ollama.ai for instructions)
+# Pull the LLaVA model
+ollama pull llava
 ```
 
 ## Usage
-1. **Set your API key**  
-   Export your API key as an environment variable:
-   ```sh
-   export GROK4_API_KEY=your_key_here
-   ```
 
-2. **Prepare your image**  
-   Place your image in the `sampleImages` directory and update the filename in `imageRecogVLM.py` if needed.
+### Cloud Mode (Default)
+```bash
+python imageRecogVLM.py path/to/your/image.jpg
+```
 
-3. **Run the script**  
-   ```sh
-   python imageRecogVLM.py
-   ```
+### Local Mode
+```bash
+python imageRecogVLM.py path/to/your/image.jpg --local
+```
 
-4. **Interact**  
-   When prompted, enter a command such as:
-   ```
-   please grab the coke cola to me
-   ```
+The script will:
+1. Load and resize the image for optimal processing
+2. Send the image to the selected VLM (cloud or local) for analysis
+3. Parse the response to extract object information
+4. Draw star markers on detected objects with coordinate scaling
+5. Save the annotated image
+6. Provide text-to-speech feedback
+7. Log all results with comprehensive timing information
 
-5. **Result**  
-   - The script will print and speak the recognition result.
-   - If objects are found, it will display the image with yellow stars marking each detected object.
+## Configuration
 
-## How It Works
-- **Prompt Construction:**  
-  The script builds a prompt for the VLM, specifying the object and requesting a Markdown table of coordinates.
+You can modify several constants at the top of the script:
 
-- **API Call:**  
-  The image is encoded (resized to 256px width for the API, but coordinates are not rescaled for plotting) and sent to the VLM API. The response is expected to contain a table like:
-  ```
-  | H | V | ID |
-  |---|---|----|
-  | 320 | 200 | 1 |
-  | 400 | 210 | 2 |
-  ```
+- `RESIZE_WIDTH`: Target width for image processing (default: 256px)
+- `LOCAL_RESIZE_COEFFICIENT`: Coefficient for local mode sizing (default: 1.0)
+- `RESIZE_QUALITY`: JPEG quality for compression (default: 85)
+- Various timeout and retry settings for both cloud and local modes
 
-- **Parsing and Plotting:**  
-  The script parses all coordinate rows and draws a 5-pointed yellow star at each `(H, V)` position on the image. If multiple objects are detected, all are marked.
 
-- **No Resizing for Plotting:**  
-  The coordinates are used as-is, matching the original image size.
+## Output
+The script generates:
+- **Console Output**: Detailed logging of object detection results with coordinates and confidence scores
+- **Annotated Image**: Original image with star markers on detected objects (`annotated_output.jpg`)
+- **Audio Feedback**: Spoken confirmation of detection results
+- **Timing Information**: Performance metrics for both processing modes
 
 ## Example Output
-- **Terminal:**
-  ```
-  coke cola is recognized, let me fetch it to you
+```
+2024-01-15 10:30:45 - Processing image: sampleImages/image_000078.jpg
+2024-01-15 10:30:45 - Using LOCAL mode with Ollama LLaVA
+2024-01-15 10:30:45 - Image resized to 256x192 (original: 640x480)
+2024-01-15 10:30:47 - LOCAL API Response time: 2.15 seconds
+2024-01-15 10:30:47 - Found 2 objects:
+  - bottle (confidence: 0.85) at (128, 96) → scaled to (320, 240)
+  - cup (confidence: 0.72) at (200, 150) → scaled to (500, 375)
+2024-01-15 10:30:48 - Annotated image saved as: annotated_output.jpg
+```
 
-  Raw Text Output:
-  320 | 200 | 1; 400 | 210 | 2
-  ```
-- **Image:**  
-  The displayed image will have yellow stars at (320, 200) and (400, 210).
+## Troubleshooting
+
+### Cloud Mode Issues
+- Verify `XAI_API_KEY` environment variable is set correctly
+- Check internet connectivity
+- Ensure API quota is not exceeded
+
+### Local Mode Issues
+- Verify Ollama is running: `ollama list`
+- Check if LLaVA model is installed: `ollama pull llava`
+- Ensure port 11434 is available
+- Check proxy settings if behind corporate firewall
+
+### General Issues
+- Verify image file exists and is in supported format (JPG, PNG)
+- Check Python dependencies are installed
+- Ensure text-to-speech system is available (`espeak` or `festival`)
+
+## Technical Notes
+
+- **Coordinate System**: Origin (0,0) at top-left, coordinates scaled from processed to original image dimensions
+- **Image Processing**: Maintains aspect ratio during resizing
+- **Proxy Handling**: Automatic bypass for localhost connections in local mode
+- **Error Handling**: Comprehensive exception handling with fallback responses
+- **Performance**: Local mode typically faster for repeated queries, cloud mode for occasional use
+
+## Extending the Script
+
+The script is designed for modularity. You can:
+- Add new VLM providers by implementing the API interface pattern
+- Modify the prompt template for different detection tasks
+- Customize the visual marking system (stars, boxes, etc.)
+- Integrate with robotic control systems using the coordinate output
+- Add support for batch processing multiple images
+
+
 
 ## Notes
 - The script expects the VLM API to return coordinates in the same resolution as the original image.

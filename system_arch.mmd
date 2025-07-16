@@ -1,208 +1,142 @@
-%%{init: {"flowchart": {"curve": "stepBefore", "defaultRenderer": "elk"}} }%%
+---
+title: VLM Image Recognition System Architecture
+---
 flowchart TD
-    %% User Interaction Subgraph
-    subgraph User Interaction ["User Interaction"]
-        direction TB
-        UI1@{ icon: "fa:user", form: "circle", label: "User", pos: "t", h: 60 }
-        UI2["User Input: Command (e.g. 'please grab the coke cola to me')"]
-        UI3["Input Validation"]
-        UI4{"Valid Command?"}
-        UI5["Prompt User for Correction"]
-        UI6["Log Invalid Command"]
-        UI7["Continue with Valid Command"]
-        UI1 --> UI2
-        UI2 --> UI3
-        UI3 --> UI4
-        UI4 -- No --> UI5
-        UI4 -- No --> UI6
-        UI4 -- Yes --> UI7
-    end
+    %% Input Layer
+    A["`🖼️ **Input Image**
+    (JPG/PNG)`"] --> B{"`📏 **Image Processing**
+    Resize & Quality Control`"}
+    
+    %% Image Processing
+    B --> C["`📐 **Calculate Dimensions**
+    RESIZE_WIDTH: 256px
+    LOCAL_RESIZE_COEFFICIENT: 1.0
+    Maintain Aspect Ratio`"]
+    
+    %% Mode Selection
+    C --> D{"`⚙️ **Processing Mode**
+    --local flag?`"}
+    
+    %% Cloud Path
+    D -->|Cloud Mode| E["`☁️ **X.AI Grok-4 VLM**
+    API Endpoint
+    Vision Analysis`"]
+    
+    %% Local Path
+    D -->|Local Mode| F["`🏠 **Ollama LLaVA**
+    Local Processing
+    Proxy Bypass`"]
+    
+    %% API Configuration
+    E --> G["`🔑 **Cloud Config**
+    XAI_API_KEY
+    Quality: 85
+    Timeout: 30s`"]
+    
+    F --> H["`🔧 **Local Config**
+    localhost:11434
+    No Proxy
+    Timeout: 60s`"]
+    
+    %% Processing
+    G --> I["`🧠 **VLM Analysis**
+    Object Detection
+    Coordinate Extraction
+    Confidence Scoring`"]
+    
+    H --> I
+    
+    %% Response Processing
+    I --> J{"`📋 **Parse Response**
+    Markdown Table Format
+    Valid Coordinates?`"}
+    
+    J -->|Success| K["`✅ **Object Detection**
+    Extract H,V Coordinates
+    Parse Object Labels
+    Calculate Confidence`"]
+    
+    J -->|Failure| L["`❌ **Error Handling**
+    Log Parsing Error
+    Generate Fallback Response`"]
+    
+    %% Coordinate Processing
+    K --> M["`📍 **Coordinate Scaling**
+    Scale from Processed to Original
+    Maintain Aspect Ratio
+    Dynamic Resolution Mapping`"]
+    
+    %% Visualization
+    M --> N["`⭐ **Visual Markers**
+    Draw Stars at Coordinates
+    Annotate Object Labels
+    Apply Visual Feedback`"]
+    
+    %% Output Generation
+    N --> O["`💾 **Save Results**
+    annotated_output.jpg
+    Preserve Original + Markers`"]
+    
+    L --> P["`🔊 **Audio Feedback**
+    Text-to-Speech
+    Result Announcement`"]
+    
+    O --> P
+    
+    %% Logging
+    P --> Q["`📝 **Comprehensive Logging**
+    Timing Information
+    Detection Results
+    Error Tracking`"]
+    
+    %% Final Output
+    Q --> R["`📤 **Output Complete**
+    Console Results
+    Annotated Image
+    Audio Confirmation`"]
 
-    %% NLP Processing Subgraph
-    subgraph NLP_Processing ["NLP Processing"]
-        direction TB
-        NLP1["Extract Object from Input"]
-        NLP2["Extract Action from Input"]
-        NLP3["Extract Context (Location, Time, etc.)"]
-        NLP4["Entity Disambiguation"]
-        NLP5{"Ambiguity Detected?"}
-        NLP6["Request Clarification from User"]
-        NLP7["Continue with Extracted Entities"]
-        NLP8["Log NLP Errors"]
-        UI7 --> NLP1
-        NLP1 --> NLP2
-        NLP2 --> NLP3
-        NLP3 --> NLP4
-        NLP4 --> NLP5
-        NLP5 -- Yes --> NLP6
-        NLP5 -- No --> NLP7
-        NLP6 --> UI2
-        NLP5 -- Yes --> NLP8
+    %% Subgraph for Cloud Processing
+    subgraph Cloud ["`☁️ **Cloud Processing Path**`"]
+        E
+        G
     end
-
-    %% Prompt Construction Subgraph
-    subgraph Prompt_Construction ["Prompt Construction"]
-        direction TB
-        PC1["Build Prompt for VLM API"]
-        PC2["Add Contextual Information"]
-        PC3["Add User Preferences"]
-        PC4["Sanitize Prompt"]
-        PC5["Log Prompt"]
-        NLP7 --> PC1
-        PC1 --> PC2
-        PC2 --> PC3
-        PC3 --> PC4
-        PC4 --> PC5
+    
+    %% Subgraph for Local Processing
+    subgraph Local ["`🏠 **Local Processing Path**`"]
+        F
+        H
     end
-
-    %% Image Processing Subgraph
-    subgraph Image_Processing ["Image Processing"]
-        direction TB
-        IP1["Capture Image from Camera"]
-        IP2["Preprocess Image (resize, normalize, enhance)"]
-        IP3["Encode Image (resize for API)"]
-        IP4["Check Image Quality"]
-        IP5{"Image Quality Sufficient?"}
-        IP6["Request New Image"]
-        IP7["Continue with Encoded Image"]
-        PC5 --> IP1
-        IP1 --> IP2
-        IP2 --> IP3
-        IP3 --> IP4
-        IP4 --> IP5
-        IP5 -- No --> IP6
-        IP5 -- Yes --> IP7
-        IP6 --> IP1
+    
+    %% Subgraph for Core Processing
+    subgraph Core ["`🎯 **Core VLM Processing**`"]
+        I
+        J
+        K
+        M
     end
-
-    %% API Communication Subgraph
-    subgraph API_Communication ["API Communication"]
-        direction TB
-        API1["Call VLM API with Prompt and Image"]
-        API2["Handle API Timeout"]
-        API3["Handle API Error"]
-        API4["Receive Markdown Table Response"]
-        API5["Log API Response"]
-        IP7 --> API1
-        API1 --> API4
-        API1 -.-> API2
-        API1 -.-> API3
-        API4 --> API5
-        API2 --> API3
-        API3 --> UI2
+    
+    %% Subgraph for Output Pipeline
+    subgraph Output ["`📊 **Output Pipeline**`"]
+        N
+        O
+        P
+        Q
+        R
     end
-
-    %% Response Parsing Subgraph
-    subgraph Response_Parsing ["Response Parsing"]
-        direction TB
-        RP1["Parse Table for Coordinates"]
-        RP2["Parse Table for Object Labels"]
-        RP3["Parse Table for Confidence Scores"]
-        RP4["Validate Table Format"]
-        RP5{"Table Format Valid?"}
-        RP6["Log Parsing Error"]
-        RP7["Continue with Parsed Data"]
-        API5 --> RP1
-        RP1 --> RP2
-        RP2 --> RP3
-        RP3 --> RP4
-        RP4 --> RP5
-        RP5 -- No --> RP6
-        RP5 -- Yes --> RP7
-        RP6 --> UI2
-    end
-
-    %% Object Recognition Subgraph
-    subgraph Object_Recognition ["Object Recognition"]
-        direction TB
-        OR1{"Objects Recognized?"}
-        OR2["Generate 'not found' Response"]
-        OR3["Generate 'found' Response"]
-        OR4["Log Recognition Result"]
-        RP7 --> OR1
-        OR1 -- No --> OR2
-        OR1 -- Yes --> OR3
-        OR2 --> OR4
-        OR3 --> OR4
-    end
-
-    %% Visualization Subgraph
-    subgraph Visualization ["Visualization"]
-        direction TB
-        V1["Draw Star(s) on Image at Each Coordinate"]
-        V2["Draw Bounding Boxes"]
-        V3["Highlight Target Object"]
-        V4["Annotate Confidence Scores"]
-        V5["Save Annotated Image"]
-        OR3 --> V1
-        V1 --> V2
-        V2 --> V3
-        V3 --> V4
-        V4 --> V5
-    end
-
-    %% Feedback Subgraph
-    subgraph Feedback ["Feedback"]
-        direction TB
-        F1["Text-to-Speech Feedback"]
-        F2["Show Image (if objects found)"]
-        F3["Send Notification"]
-        F4["Log Feedback"]
-        OR2 --> F1
-        V5 --> F1
-        F1 --> F2
-        F2 --> F3
-        F3 --> F4
-    end
-
-    %% Logging & Monitoring Subgraph
-    subgraph Logging_Monitoring ["Logging & Monitoring"]
-        direction TB
-        LM1["Log All User Inputs"]
-        LM2["Log All System Events"]
-        LM3["Log All Errors"]
-        LM4["Monitor System Health"]
-        LM5["Send Alerts on Failure"]
-        F4 --> LM1
-        UI6 --> LM2
-        NLP8 --> LM3
-        API3 --> LM3
-        RP6 --> LM3
-        OR4 --> LM2
-        LM4 --> LM5
-    end
-
-    %% Data Storage Subgraph
-    subgraph Data_Storage ["Data Storage"]
-        direction TB
-        DS1[("User Command History")]
-        DS2[("Image Archive")]
-        DS3[("API Response Archive")]
-        DS4[("Error Logs")]
-        DS5[("Feedback Records")]
-        LM1 --> DS1
-        V5 --> DS2
-        API5 --> DS3
-        LM3 --> DS4
-        F4 --> DS5
-    end
-
-    %% Tooltips and Click Events
-    click UI2 "https://en.wikipedia.org/wiki/Natural_language_processing" "Learn about NLP"
-    click PC1 "https://en.wikipedia.org/wiki/Prompt_engineering" "Prompt Engineering"
-    click IP2 "https://en.wikipedia.org/wiki/Image_processing" "Image Processing"
-    click API1 "https://en.wikipedia.org/wiki/API" "API Info"
-    click RP1 "https://en.wikipedia.org/wiki/Markdown" "Markdown Table Parsing"
-    click OR1 "https://en.wikipedia.org/wiki/Object_recognition" "Object Recognition"
-    click V1 "https://en.wikipedia.org/wiki/Image_annotation" "Image Annotation"
-    click F1 "https://en.wikipedia.org/wiki/Speech_synthesis" "Text-to-Speech"
-    click LM4 "https://en.wikipedia.org/wiki/System_monitoring" "System Monitoring"
-    click DS1 "https://en.wikipedia.org/wiki/Database" "Database Info"
 
     %% Styling
-    classDef user fill:#e3f2fd,stroke:#1976d2,stroke-width:2px;
-    classDef nlp fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
-    classDef prompt fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px;
-    classDef image fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
-    classDef api fill:#fce4ec,stroke:#d81b60,stroke-width:2px;
-    classDef parse fill:#f9fbe7,stroke:#afb42b,stroke-width:2px;
+    classDef input fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef processing fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
+    classDef cloud fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef local fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    classDef core fill:#fce4ec,stroke:#d81b60,stroke-width:2px
+    classDef output fill:#f9fbe7,stroke:#689f38,stroke-width:2px
+    classDef error fill:#ffebee,stroke:#f44336,stroke-width:2px
+    
+    class A,B,C input
+    class D processing
+    class E,G cloud
+    class F,H local
+    class I,J,K,M core
+    class N,O,P,Q,R output
+    class L error
