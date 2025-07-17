@@ -12,8 +12,9 @@ from pathlib import Path
 
 # Add paths for imports
 current_dir = Path(__file__).parent
-sys.path.insert(0, str(current_dir))
-sys.path.insert(0, str(current_dir / "vlm_modular"))
+parent_dir = current_dir.parent
+sys.path.insert(0, str(parent_dir))
+sys.path.insert(0, str(parent_dir / "vlm_modular"))
 
 def test_original_approach():
     """Test the original imageRecogVLM.py approach and capture raw VLM output."""
@@ -26,7 +27,7 @@ def test_original_approach():
         import imageRecogVLM
         
         # Set up test parameters
-        image_path = str(current_dir / "sampleImages" / "image_000777_rsz.jpg")
+        image_path = str(parent_dir / "sampleImages" / "image_000777_rsz.jpg")
         query = "pass me the phone"
         
         print(f"Image: {image_path}")
@@ -97,15 +98,15 @@ def test_modular_approach():
             sys.path.insert(0, str(modular_path))
         
         # Import from modular system
-        from config.settings import VLMSettings
-        from config.api_keys import APIKeys
-        from input.text_processor import TextProcessor
-        from vlm.factory import VLMFactory
-        from image.processor import ImageProcessor
-        from image.coordinate_parser import CoordinateParser
+        from vlm_modular.config.settings import VLMSettings
+        from vlm_modular.config.api_keys import APIKeys
+        from vlm_modular.input.text_processor import TextProcessor
+        from vlm_modular.vlm.factory import VLMFactory
+        from vlm_modular.image.processor import ImageProcessor
+        from vlm_modular.image.coordinate_parser import CoordinateParser
         
         # Set up test parameters
-        image_path = str(current_dir / "sampleImages" / "image_000777_rsz.jpg")
+        image_path = str(parent_dir / "sampleImages" / "image_000777_rsz.jpg")
         query = "pass me the phone"
         
         print(f"Image: {image_path}")

@@ -1,0 +1,37 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test results (should be generated locally)
+*_results.json
+*_comparison.json
+
+# Annotated images (generated outputs)
+*_annotated.jpg
+*_annotated.png
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp

@@ -11,8 +11,11 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# Add vlm_modular to path
-vlm_modular_path = os.path.join(os.path.dirname(__file__), 'vlm_modular')
+# Add paths for imports
+parent_dir = os.path.dirname(os.path.dirname(__file__))
+vlm_modular_path = os.path.join(parent_dir, 'vlm_modular')
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 if vlm_modular_path not in sys.path:
     sys.path.insert(0, vlm_modular_path)
 
@@ -155,7 +158,7 @@ def compare_grok_apis():
     
     # Test parameters
     text_command = "pass me the phone"
-    image_path = "/Users/yanbo/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"
+    image_path = os.path.join(parent_dir, "sampleImages", "image_000777_rsz.jpg")
     
     # Check if image exists
     if not os.path.exists(image_path):
