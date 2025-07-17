@@ -32,7 +32,7 @@ class VLMSettings:
     tts_timeout: float = 10.0
     
     # API settings
-    grok_model: str = "grok-vision-beta"
+    grok_model: str = "grok-4-0709"  # Same model as original
     qwen_model: str = "qwen-vl-plus"  # Same model as original
     llava_model: str = "llava"
     

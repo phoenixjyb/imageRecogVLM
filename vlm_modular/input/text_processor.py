@@ -96,46 +96,38 @@ class TextProcessor:
         
         return query
     
-    def create_vlm_prompt(self, query: str, provider: str) -> str:
+    def create_vlm_prompt(self, query: str, provider: str, image_width: int = 640, image_height: int = 480) -> str:
         """Create optimized prompt for specific VLM provider."""
         base_prompt = f"Find and locate all instances of '{query}' in this image."
         
         if provider.lower() == "grok":
-            return self._create_grok_prompt(query)
+            return self._create_grok_prompt(query, image_width, image_height)
         elif provider.lower() == "qwen":
-            return self._create_qwen_prompt(query)
+            return self._create_qwen_prompt(query, image_width, image_height)
         elif provider.lower() == "llava":
-            return self._create_llava_prompt(query)
+            return self._create_llava_prompt(query, image_width, image_height)
         else:
             return base_prompt
     
-    def _create_grok_prompt(self, query: str) -> str:
-        """Create Grok-optimized prompt."""
-        return f"""Analyze this image which has dimensions 640x480 pixels and locate all instances of '{query}' objects.
-
-IMPORTANT CONSTRAINTS:
-- Image width: 640 pixels (H coordinates must be 0-640)
-- Image height: 480 pixels (V coordinates must be 0-480)
-- Coordinate system: Top-left corner is (0,0)
-
-IMPORTANT: For each '{query}' object found, determine ONLY the CENTER POINT coordinates (the exact middle of the object).
-DO NOT provide corner coordinates or bounding box coordinates.
-
-For each '{query}' object found:
-1. Calculate the exact center point of the object
-2. Provide coordinates in this table format:
-
-| H | V | ID |
-|---|---|----| 
-
-Where H = horizontal center pixel (0-640), V = vertical center pixel (0-480).
-VERIFY that all coordinates are within the image bounds before responding.
-If no '{query}' is found, return: | 0 | 0 | 0 |"""
+    def _create_grok_prompt(self, query: str, image_width: int, image_height: int) -> str:
+        """Create Grok-optimized prompt - matches original imageRecogVLM.py exactly."""
+        # Use the exact same logic as build_grok_prompt from original
+        return (
+            f"Analyze this {image_width}x{image_height} pixel image. "
+            f"Locate all instances of '{query}' in the image. "
+            f"For each '{query}' object found: "
+            f"1. Calculate the exact center point of the object "
+            f"2. Provide coordinates in this table format: "
+            f"| H | V | ID | "
+            f"|---|---|----| "
+            f"Where H = horizontal center pixel, V = vertical center pixel. "
+            f"If no '{query}' is found, return: | 0 | 0 | 0 |"
+        )
     
-    def _create_qwen_prompt(self, query: str) -> str:
+    def _create_qwen_prompt(self, query: str, image_width: int, image_height: int) -> str:
         """Create Qwen-optimized prompt - copied from original imageRecogVLM.py."""
         return (
-            f"Analyze this 640x480 pixel image. "
+            f"Analyze this {image_width}x{image_height} pixel image. "
             f"Look for '{query}' objects in the image. "
             f"For each '{query}' you find, identify where the center of that object is located. "
             f"Provide the center coordinates in this table format: "
@@ -145,21 +137,17 @@ If no '{query}' is found, return: | 0 | 0 | 0 |"""
             f"If you don't see any '{query}', return: | 0 | 0 | 0 |"
         )
     
-    def _create_llava_prompt(self, query: str) -> str:
-        """Create LLaVA-optimized prompt."""
-        return f"""Look at this image which has dimensions 640x480 pixels and find all '{query}' objects.
+    def _create_llava_prompt(self, query: str, image_width: int, image_height: int) -> str:
+        """Create LLaVA-optimized prompt - copied from original imageRecogVLM.py."""
+        return f"""Analyze this {image_width}x{image_height} pixel image carefully. Look for '{query}' objects in the image.
 
-IMPORTANT CONSTRAINTS:
-- Image width: 640 pixels (H coordinates must be 0-640)
-- Image height: 480 pixels (V coordinates must be 0-480)
-- Coordinate system: Top-left corner is (0,0)
-
-For each {query} you find, determine the exact center point of the object.
-Give me the center coordinates in this format:
+For each '{query}' object you find:
+1. Determine the exact center point of that object
+2. Give me the center coordinates in this format:
 
 Center point: (H, V)
 
-Where H is the horizontal pixel position (0-640) and V is the vertical pixel position (0-480).
+Where H is the horizontal pixel position (0-{image_width}) and V is the vertical pixel position (0-{image_height}).
 VERIFY that all coordinates are within the image bounds before responding.
 If you find multiple objects, list each center point separately."""
     

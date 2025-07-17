@@ -4,7 +4,10 @@ import requests
 import json
 import os
 import sys
+import time
 from typing import Dict, Any, List
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # Add parent directory to path for imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -17,7 +20,7 @@ from vlm.base import VLMClient
 class GrokClient(VLMClient):
     """Client for X.AI Grok vision model."""
     
-    def __init__(self, api_key: str, model: str = "grok-vision-beta"):
+    def __init__(self, api_key: str, model: str = "grok-4-0709"):
         """Initialize Grok client."""
         super().__init__(api_key, model)
         self.base_url = "https://api.x.ai/v1/chat/completions"
@@ -25,6 +28,8 @@ class GrokClient(VLMClient):
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
         }
+        # Use same proxy setup as original
+        self.proxies = {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
     
     def query_image(self, image_data: str, prompt: str) -> Dict[str, Any]:
         """Query Grok with image and prompt."""
@@ -35,35 +40,40 @@ class GrokClient(VLMClient):
             return self.handle_error(ValueError("Invalid image data"), "Grok query")
         
         try:
+            # Use exact same payload format as original
             payload = {
+                "model": self.model,
                 "messages": [
                     {
-                        "role": "user",
+                        "role": "user", 
                         "content": [
                             {
-                                "type": "text",
+                                "type": "text", 
                                 "text": prompt
-                            },
+                            }, 
                             {
-                                "type": "image_url",
+                                "type": "image_url", 
                                 "image_url": {
-                                    "url": f"data:image/jpeg;base64,{image_data}",
-                                    "detail": "high"
+                                    "url": f"data:image/jpeg;base64,{image_data}"
                                 }
                             }
                         ]
                     }
-                ],
-                "model": self.model,
-                "stream": False,
-                "temperature": 0
+                ]
             }
             
-            response = requests.post(
+            # Use original timeout and proxy settings with retry logic
+            session = requests.Session()
+            retry_strategy = Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+            adapter = HTTPAdapter(max_retries=retry_strategy)
+            session.mount("https://", adapter)
+            
+            response = session.post(
                 self.base_url,
                 headers=self.headers,
                 json=payload,
-                timeout=30
+                proxies=self.proxies,
+                timeout=120
             )
             
             if response.status_code == 200:
