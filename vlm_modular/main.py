@@ -158,7 +158,9 @@ class VLMObjectRecognition:
             }
             
         except Exception as e:
+            import traceback
             self.logger.error(f"Error in object detection: {e}")
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
             return {'success': False, 'error': str(e)}
     
     def _get_user_query(self) -> Optional[str]:
@@ -255,11 +257,37 @@ class VLMObjectRecognition:
     
     def _coords_similar(self, coords1: list, coords2: list, tolerance: float) -> bool:
         """Check if two coordinate sets are similar within tolerance."""
-        if len(coords1) != 4 or len(coords2) != 4:
-            return False
-        
-        return all(abs(c1 - c2) <= tolerance for c1, c2 in zip(coords1, coords2))
-    
+        if len(coords1) == 2 and len(coords2) == 2:
+            # Both are center points
+            h1, v1 = coords1
+            h2, v2 = coords2
+            return abs(h1 - h2) <= tolerance and abs(v1 - v2) <= tolerance
+            
+        elif len(coords1) == 4 and len(coords2) == 4:
+            # Both are bounding boxes
+            x1, y1, x2, y2 = coords1
+            ex1, ey1, ex2, ey2 = coords2
+            return (abs(x1 - ex1) <= tolerance and abs(y1 - ey1) <= tolerance and
+                    abs(x2 - ex2) <= tolerance and abs(y2 - ey2) <= tolerance)
+                    
+        elif len(coords1) == 2 and len(coords2) == 4:
+            # Center point vs bounding box - compare centers
+            h1, v1 = coords1
+            ex1, ey1, ex2, ey2 = coords2
+            center_h = (ex1 + ex2) / 2
+            center_v = (ey1 + ey2) / 2
+            return abs(h1 - center_h) <= tolerance and abs(v1 - center_v) <= tolerance
+            
+        elif len(coords1) == 4 and len(coords2) == 2:
+            # Bounding box vs center point - compare centers
+            x1, y1, x2, y2 = coords1
+            h2, v2 = coords2
+            center_h = (x1 + x2) / 2
+            center_v = (y1 + y2) / 2
+            return abs(center_h - h2) <= tolerance and abs(center_v - v2) <= tolerance
+            
+        else:            return False
+
     def _generate_output_path(self, input_path: str, object_name: str) -> str:
         """Generate output path for annotated image."""
         base_dir = os.path.dirname(input_path)
@@ -296,7 +324,7 @@ def main():
     print()
     
     # Get image path
-    default_image = "~/Downloads/image_000777.jpg"
+    default_image = "~/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"
     image_path = input(f"Enter image path (default: {default_image}): ").strip()
     if not image_path:
         image_path = os.path.expanduser(default_image)
@@ -315,9 +343,21 @@ def main():
     
     if len(providers) > 1:
         print(f"Available providers: {', '.join(providers)}")
-        provider = input(f"Choose provider (default: {providers[0]}): ").strip()
-        if not provider or provider not in providers:
-            provider = providers[0]
+        print("1. grok")
+        print("2. qwen") 
+        print("3. llava")
+        choice = input(f"Choose provider (1/2/3, default: 1): ").strip()
+        
+        # Map number choices to provider names
+        provider_map = {'1': 'grok', '2': 'qwen', '3': 'llava'}
+        
+        if choice in provider_map and provider_map[choice] in providers:
+            provider = provider_map[choice]
+        elif choice in providers:
+            # Allow direct provider name input as fallback
+            provider = choice
+        else:
+            provider = providers[0]  # Default to first available
     else:
         provider = providers[0]
     

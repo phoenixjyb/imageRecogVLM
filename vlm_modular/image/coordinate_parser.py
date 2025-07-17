@@ -13,6 +13,11 @@ class CoordinateParser:
         
         # Define coordinate patterns for different formats
         self.patterns = {
+            # Center point table format: | H | V | ID |
+            'center_table': r'\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|',
+            # Center point parentheses format: (H, V) or Center point: (H, V)
+            'center_paren': r'(?:center point:?|center:?)?\s*\((\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\)',
+            # Legacy bounding box formats (for fallback)
             'bracket_coords': r'\[(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\]',
             'paren_coords': r'\((\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\)',
             'bbox_format': r'(?:bounding box|bbox|coordinates?):\s*\[?(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\]?',
@@ -28,7 +33,8 @@ class CoordinateParser:
         
         all_objects = []
         
-        # Try each parsing method
+        # Try each parsing method (prioritize center point formats)
+        all_objects.extend(self._parse_center_point_formats(text, image_width, image_height))
         all_objects.extend(self._parse_standard_coordinates(text))
         all_objects.extend(self._parse_table_format(text))
         all_objects.extend(self._parse_ratio_coordinates(text, image_width, image_height))
@@ -76,7 +82,7 @@ class CoordinateParser:
         for line in lines:
             if '|' in line and ('[' in line or '(' in line):
                 # Extract coordinates from table cells
-                for pattern_name, pattern in ['bracket_coords', 'paren_coords']:
+                for pattern_name in ['bracket_coords', 'paren_coords']:
                     pattern = self.patterns[pattern_name]
                     match = re.search(pattern, line)
                     if match:
@@ -177,48 +183,90 @@ class CoordinateParser:
     
     def _validate_coordinates(self, coords: List[float], image_width: int, image_height: int) -> bool:
         """Validate if coordinates are reasonable."""
-        if len(coords) != 4:
+        # Use more lenient bounds like the original implementation
+        # VLMs sometimes return coordinates slightly outside image bounds
+        max_width = image_width * 2
+        max_height = image_height * 2
+        
+        if len(coords) == 2:
+            # Center point coordinates (H, V)
+            h, v = coords
+            
+            # Check if coordinates are non-negative
+            if h < 0 or v < 0:
+                return False
+            
+            # Check if coordinates are within lenient bounds
+            if h >= max_width or v >= max_height:
+                return False
+                
+            return True
+            
+        elif len(coords) == 4:
+            # Bounding box coordinates (x1, y1, x2, y2)
+            x1, y1, x2, y2 = coords
+            
+            # Check if coordinates are non-negative
+            if any(coord < 0 for coord in coords):
+                return False
+            
+            # Check if coordinates are within lenient bounds
+            if x1 >= max_width or y1 >= max_height or x2 >= max_width or y2 >= max_height:
+                return False
+            
+            # Check if bounding box is valid (x2 > x1, y2 > y1)
+            if x2 <= x1 or y2 <= y1:
+                return False
+            
+            # Check if bounding box is reasonably sized (not too small)
+            min_size = 5
+            if (x2 - x1) < min_size or (y2 - y1) < min_size:
+                return False
+            
+            return True
+        else:
             return False
-        
-        x1, y1, x2, y2 = coords
-        
-        # Check if coordinates are non-negative
-        if any(coord < 0 for coord in coords):
-            return False
-        
-        # Check if coordinates are within image bounds (with some tolerance)
-        if x1 >= image_width or y1 >= image_height or x2 >= image_width or y2 >= image_height:
-            return False
-        
-        # Check if bounding box is valid (x2 > x1, y2 > y1)
-        if x2 <= x1 or y2 <= y1:
-            return False
-        
-        # Check if bounding box is reasonably sized (not too small)
-        min_size = 5
-        if (x2 - x1) < min_size or (y2 - y1) < min_size:
-            return False
-        
-        return True
     
     def _is_duplicate(self, coords: List[float], existing: List[Dict[str, Any]], tolerance: float = 10) -> bool:
         """Check if coordinates are duplicate of existing ones."""
-        if len(coords) != 4:
-            return False
+        if len(coords) == 2:
+            # Center point coordinates
+            h, v = coords
             
-        x1, y1, x2, y2 = coords
-        
-        for existing_obj in existing:
-            existing_coords = existing_obj.get('coordinates', [])
-            if len(existing_coords) != 4:
-                continue
-                
-            ex1, ey1, ex2, ey2 = existing_coords
+            for existing_obj in existing:
+                existing_coords = existing_obj.get('coordinates', [])
+                if len(existing_coords) == 2:
+                    # Compare center points
+                    eh, ev = existing_coords
+                    if abs(h - eh) <= tolerance and abs(v - ev) <= tolerance:
+                        return True
+                elif len(existing_coords) == 4:
+                    # Compare center point to existing bounding box center
+                    ex1, ey1, ex2, ey2 = existing_coords
+                    center_h = (ex1 + ex2) / 2
+                    center_v = (ey1 + ey2) / 2
+                    if abs(h - center_h) <= tolerance and abs(v - center_v) <= tolerance:
+                        return True
             
-            # Check if coordinates are within tolerance
-            if (abs(x1 - ex1) <= tolerance and abs(y1 - ey1) <= tolerance and
-                abs(x2 - ex2) <= tolerance and abs(y2 - ey2) <= tolerance):
-                return True
+        elif len(coords) == 4:
+            # Bounding box coordinates
+            x1, y1, x2, y2 = coords
+            
+            for existing_obj in existing:
+                existing_coords = existing_obj.get('coordinates', [])
+                if len(existing_coords) == 4:
+                    # Compare bounding boxes
+                    ex1, ey1, ex2, ey2 = existing_coords
+                    if (abs(x1 - ex1) <= tolerance and abs(y1 - ey1) <= tolerance and
+                        abs(x2 - ex2) <= tolerance and abs(y2 - ey2) <= tolerance):
+                        return True
+                elif len(existing_coords) == 2:
+                    # Compare bounding box center to existing center point
+                    eh, ev = existing_coords
+                    center_h = (x1 + x2) / 2
+                    center_v = (y1 + y2) / 2
+                    if abs(center_h - eh) <= tolerance and abs(center_v - ev) <= tolerance:
+                        return True
         
         return False
     
@@ -334,3 +382,70 @@ class CoordinateParser:
             'format': center_data['format'],
             'source': 'coordinate_parser'
         }
+    
+    def _parse_center_point_formats(self, text: str, image_width: int, image_height: int) -> List[Dict[str, Any]]:
+        """Parse center point table and other center point formats."""
+        objects = []
+        
+        # Parse center point table format: | H | V | ID |
+        center_table_pattern = r'\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|'
+        matches = re.finditer(center_table_pattern, text)
+        for match in matches:
+            try:
+                h, v, id_num = int(match.group(1)), int(match.group(2)), int(match.group(3))
+                if h == 0 and v == 0:  # Skip "not found" responses
+                    continue
+                
+                # Validate and clip coordinates to image bounds
+                original_h, original_v = h, v
+                h = max(0, min(h, image_width - 1))
+                v = max(0, min(v, image_height - 1))
+                
+                if original_h != h or original_v != v:
+                    self.logger.warning(f"Clipped coordinates from ({original_h},{original_v}) to ({h},{v}) for image bounds {image_width}x{image_height}")
+                    
+                obj = {
+                    'object_name': 'detected_object',
+                    'coordinates': [h, v],  # Center point coordinates
+                    'center_h': h,
+                    'center_v': v,
+                    'confidence': 0.9 if original_h == h and original_v == v else 0.7,  # Lower confidence for clipped coordinates
+                    'format': 'center_point',
+                    'source': 'center_table',
+                    'valid': True
+                }
+                objects.append(obj)
+                self.logger.info(f"Found center point from table: H={h}, V={v}, ID={id_num}")
+            except (ValueError, IndexError):
+                continue
+        
+        # Parse center point parentheses format: (H, V) or Center point: (H, V)
+        center_paren_pattern = r'(?:center point:?|center:?)?\s*\((\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\)'
+        matches = re.finditer(center_paren_pattern, text, re.IGNORECASE)
+        for match in matches:
+            try:
+                h, v = float(match.group(1)), float(match.group(2))
+                
+                # Check if these are ratio coordinates (0-1 range)
+                if 0 <= h <= 1 and 0 <= v <= 1:
+                    h = int(h * image_width)
+                    v = int(v * image_height)
+                else:
+                    h, v = int(h), int(v)
+                
+                obj = {
+                    'object_name': 'detected_object',
+                    'coordinates': [h, v],  # Center point coordinates
+                    'center_h': h,
+                    'center_v': v,
+                    'confidence': 0.85,
+                    'format': 'center_point',
+                    'source': 'center_paren',
+                    'valid': True
+                }
+                objects.append(obj)
+                self.logger.info(f"Found center point from parentheses: H={h}, V={v}")
+            except (ValueError, IndexError):
+                continue
+        
+        return objects

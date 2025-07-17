@@ -111,45 +111,57 @@ class TextProcessor:
     
     def _create_grok_prompt(self, query: str) -> str:
         """Create Grok-optimized prompt."""
-        return f"""Find all instances of '{query}' in this image and provide their locations.
+        return f"""Analyze this image which has dimensions 640x480 pixels and locate all instances of '{query}' objects.
 
-For each object found, provide the bounding box coordinates in this exact format:
-Object: {query}
-Bounding box: [x1, y1, x2, y2]
+IMPORTANT CONSTRAINTS:
+- Image width: 640 pixels (H coordinates must be 0-640)
+- Image height: 480 pixels (V coordinates must be 0-480)
+- Coordinate system: Top-left corner is (0,0)
 
-Where:
-- x1, y1 are the top-left corner coordinates  
-- x2, y2 are the bottom-right corner coordinates
-- Coordinates should be actual pixel values
+IMPORTANT: For each '{query}' object found, determine ONLY the CENTER POINT coordinates (the exact middle of the object).
+DO NOT provide corner coordinates or bounding box coordinates.
 
-Please be precise with the coordinates and list each instance separately."""
+For each '{query}' object found:
+1. Calculate the exact center point of the object
+2. Provide coordinates in this table format:
+
+| H | V | ID |
+|---|---|----| 
+
+Where H = horizontal center pixel (0-640), V = vertical center pixel (0-480).
+VERIFY that all coordinates are within the image bounds before responding.
+If no '{query}' is found, return: | 0 | 0 | 0 |"""
     
     def _create_qwen_prompt(self, query: str) -> str:
-        """Create Qwen-optimized prompt."""
-        return f"""Analyze this image and find all instances of '{query}'. 
-
-Provide the results in a clear table format:
-
-| Object | Bounding Box |
-|--------|--------------|
-| {query} | [x1,y1,x2,y2] |
-
-Use actual pixel coordinates where [x1,y1] is top-left and [x2,y2] is bottom-right.
-List each instance as a separate row."""
+        """Create Qwen-optimized prompt - copied from original imageRecogVLM.py."""
+        return (
+            f"Analyze this 640x480 pixel image. "
+            f"Look for '{query}' objects in the image. "
+            f"For each '{query}' you find, identify where the center of that object is located. "
+            f"Provide the center coordinates in this table format: "
+            f"| H | V | ID |"
+            f"|---|---|----| "
+            f"Where H is the horizontal pixel position and V is the vertical pixel position of the center. "
+            f"If you don't see any '{query}', return: | 0 | 0 | 0 |"
+        )
     
     def _create_llava_prompt(self, query: str) -> str:
         """Create LLaVA-optimized prompt."""
-        return f"""Look at this image and find all '{query}' objects.
+        return f"""Look at this image which has dimensions 640x480 pixels and find all '{query}' objects.
 
-For each {query} you find, give me:
-1. Object name: {query}
-2. Location: [x1, y1, x2, y2] in pixels
+IMPORTANT CONSTRAINTS:
+- Image width: 640 pixels (H coordinates must be 0-640)
+- Image height: 480 pixels (V coordinates must be 0-480)
+- Coordinate system: Top-left corner is (0,0)
 
-Format each result clearly:
-Object: {query}
-Coordinates: [x1, y1, x2, y2]
+For each {query} you find, determine the exact center point of the object.
+Give me the center coordinates in this format:
 
-Be specific with pixel coordinates."""
+Center point: (H, V)
+
+Where H is the horizontal pixel position (0-640) and V is the vertical pixel position (0-480).
+VERIFY that all coordinates are within the image bounds before responding.
+If you find multiple objects, list each center point separately."""
     
     def extract_object_name(self, query: str) -> str:
         """Extract the main object name from a query."""
@@ -160,8 +172,8 @@ Be specific with pixel coordinates."""
         
         # Define patterns to extract objects from different command formats
         patterns = [
-            # "pass me the [object]", "give me the [object]", "hand me the [object]"
-            r'(?:pass|give|hand|bring|get|fetch)\s+me\s+(?:the\s+)?(\w+)',
+            # "pass me the [object]", "give me the [object]", "hand me the [object]" - me is optional
+            r'(?:pass|give|hand|fetch|bring|get)\s+(?:me\s+)?(?:the\s+)?(\w+)',
             # "find the [object]", "locate the [object]", "show me the [object]"
             r'(?:find|locate|show|detect)\s+(?:me\s+)?(?:the\s+)?(\w+)',
             # "where is the [object]", "find me the [object]"
@@ -188,7 +200,17 @@ Be specific with pixel coordinates."""
         words_to_remove = {
             'please', 'can', 'you', 'help', 'me', 'pass', 'give', 'hand', 'bring', 
             'get', 'fetch', 'find', 'locate', 'show', 'detect', 'where', 'is', 
-            'the', 'a', 'an', 'all', 'some', 'i', 'need', 'want', 'see', 'to'
+            'the', 'a', 'an', 'all', 'some', 'i', 'need', 'want', 'see', 'to',
+            'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that',
+            'these', 'those', 'and', 'or', 'but', 'for', 'with', 'at', 'in',
+            'on', 'up', 'down', 'out', 'off', 'over', 'under', 'again', 'further',
+            'then', 'once', 'here', 'there', 'when', 'why', 'how', 'what', 'which',
+            'who', 'if', 'because', 'as', 'until', 'while', 'of', 'about', 'against',
+            'between', 'into', 'through', 'during', 'before', 'after', 'above',
+            'below', 'from', 'by', 'very', 'too', 'any', 'may', 'might', 'must',
+            'shall', 'will', 'would', 'should', 'could', 'ought', 'am', 'are',
+            'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do',
+            'does', 'did', 'say', 'says', 'said', 'go', 'goes', 'went', 'gone'
         }
         
         words = query.split()

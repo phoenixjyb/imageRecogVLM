@@ -33,7 +33,7 @@ class VLMSettings:
     
     # API settings
     grok_model: str = "grok-vision-beta"
-    qwen_model: str = "qwen-vl-max-0809"
+    qwen_model: str = "qwen-vl-plus"  # Same model as original
     llava_model: str = "llava"
     
     # Request settings

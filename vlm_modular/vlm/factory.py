@@ -12,7 +12,7 @@ if parent_dir not in sys.path:
 
 from vlm.base import VLMClient
 from vlm.grok_client import GrokClient
-from vlm.qwen_client import QwenClient
+from vlm.qwen_client_openai import QwenClient  # Use OpenAI-compatible client
 from vlm.llava_client import LLaVAClient
 from config.api_keys import APIKeys
 from config.settings import VLMSettings

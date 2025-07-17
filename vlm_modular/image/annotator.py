@@ -83,24 +83,49 @@ class ImageAnnotator:
     
     def _draw_bounding_box(self, draw: ImageDraw.Draw, coords: List[float], confidence: float):
         """Draw bounding box around detected object."""
-        x1, y1, x2, y2 = coords
-        
-        # Choose color based on confidence
-        if confidence >= 0.7:
-            color = "green"
-        elif confidence >= 0.5:
-            color = "yellow"
-        else:
-            color = "orange"
-        
-        # Draw rectangle
-        draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
+        if len(coords) == 2:
+            # Center point coordinates only - draw a circle around the center
+            h, v = coords
+            radius = 10  # Small radius for center point indication
+            
+            # Choose color based on confidence
+            if confidence >= 0.7:
+                color = "green"
+            elif confidence >= 0.5:
+                color = "yellow"
+            else:
+                color = "orange"
+            
+            # Draw circle around center point
+            draw.ellipse([h-radius, v-radius, h+radius, v+radius], outline=color, width=3)
+            
+        elif len(coords) == 4:
+            # Bounding box coordinates
+            x1, y1, x2, y2 = coords
+            
+            # Choose color based on confidence
+            if confidence >= 0.7:
+                color = "green"
+            elif confidence >= 0.5:
+                color = "yellow"
+            else:
+                color = "orange"
+            
+            # Draw rectangle
+            draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
     
     def _draw_star_marker(self, draw: ImageDraw.Draw, coords: List[float]):
         """Draw star marker at the center of detected object."""
-        x1, y1, x2, y2 = coords
-        center_x = (x1 + x2) / 2
-        center_y = (y1 + y2) / 2
+        if len(coords) == 2:
+            # Center point coordinates
+            center_x, center_y = coords
+        elif len(coords) == 4:
+            # Bounding box coordinates - calculate center
+            x1, y1, x2, y2 = coords
+            center_x = (x1 + x2) / 2
+            center_y = (y1 + y2) / 2
+        else:
+            return  # Invalid coordinates
         
         star_size = self.settings.annotation_star_size
         color = self.settings.annotation_text_color
@@ -134,15 +159,22 @@ class ImageAnnotator:
     def _draw_label(self, draw: ImageDraw.Draw, coords: List[float], object_name: str, 
                    instance_num: int, confidence: float, source: str):
         """Draw label with object information."""
-        x1, y1, x2, y2 = coords
+        if len(coords) == 2:
+            # Center point coordinates
+            center_x, center_y = coords
+            label_x = center_x - 30  # Offset label to the left of center
+            label_y = max(center_y - 50, 10)  # Position above center point
+        elif len(coords) == 4:
+            # Bounding box coordinates
+            x1, y1, x2, y2 = coords
+            label_x = x1
+            label_y = max(y1 - 30, 10)  # Ensure label is visible
+        else:
+            return  # Invalid coordinates
         
         # Create label text
         label = f"{object_name} #{instance_num}"
         detail_label = f"conf: {confidence:.2f} ({source})"
-        
-        # Position label above the bounding box
-        label_x = x1
-        label_y = max(y1 - 30, 10)  # Ensure label is visible
         
         # Draw background rectangle for better readability
         if self.font:

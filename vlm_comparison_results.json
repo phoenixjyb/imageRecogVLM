@@ -1,0 +1,27 @@
+{
+  "test_query": "pass me the phone",
+  "test_model": "qwen",
+  "test_image": "sampleImages/image_000777_rsz.jpg",
+  "timestamp": "2025-07-17 11:12:33",
+  "original": {
+    "approach": "original",
+    "image_dimensions": "640x480",
+    "extracted_object": "phone",
+    "prompt": "Analyze this 640x480 pixel image. Look for 'phone' objects in the image. For each 'phone' you find, identify where the center of that object is located. Provide the center coordinates in this table format: | H | V | ID ||---|---|----| Where H is the horizontal pixel position and V is the vertical pixel position of the center. If you don't see any 'phone', return: | 0 | 0 | 0 |",
+    "raw_response": "```markdown\n| H | V |\n|---|---|\n| 416 | 380 |\n```",
+    "parsed_coordinates": "416 | 380 | 1",
+    "success": true
+  },
+  "modular": {
+    "approach": "modular",
+    "image_dimensions": "640x480",
+    "extracted_object": "phone",
+    "prompt": "Analyze this 640x480 pixel image. Look for 'phone' objects in the image. For each 'phone' you find, identify where the center of that object is located. Provide the center coordinates in this table format: | H | V | ID ||---|---|----| Where H is the horizontal pixel position and V is the vertical pixel position of the center. If you don't see any 'phone', return: | 0 | 0 | 0 |",
+    "raw_response": "```markdown\n| H | V |\n|---|---|\n| 416 | 380 |\n```",
+    "full_response": "{'success': True, 'response': '```markdown\\n| H | V |\\n|---|---|\\n| 416 | 380 |\\n```', 'provider': 'qwen'}",
+    "vlm_parsed_objects": 1,
+    "additional_parsed_objects": 0,
+    "total_objects": 1,
+    "success": true
+  }
+}
