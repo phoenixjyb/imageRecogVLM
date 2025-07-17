@@ -153,15 +153,55 @@ Be specific with pixel coordinates."""
     
     def extract_object_name(self, query: str) -> str:
         """Extract the main object name from a query."""
-        # Remove common articles and adjectives
-        words_to_remove = ["the", "a", "an", "all", "some", "find", "locate", "detect"]
+        if not query:
+            return ""
+        
+        query = query.lower().strip()
+        
+        # Define patterns to extract objects from different command formats
+        patterns = [
+            # "pass me the [object]", "give me the [object]", "hand me the [object]"
+            r'(?:pass|give|hand|bring|get|fetch)\s+me\s+(?:the\s+)?(\w+)',
+            # "find the [object]", "locate the [object]", "show me the [object]"
+            r'(?:find|locate|show|detect)\s+(?:me\s+)?(?:the\s+)?(\w+)',
+            # "where is the [object]", "find me the [object]"
+            r'(?:where\s+is|find\s+me)\s+(?:the\s+)?(\w+)',
+            # "I need the [object]", "I want the [object]"
+            r'(?:i\s+(?:need|want|see))\s+(?:the\s+)?(\w+)',
+            # "[color] [object]" - like "red car", "blue truck"
+            r'(?:red|blue|green|yellow|black|white|orange|purple|pink|brown)\s+(\w+)',
+            # "the [object]" - simple pattern
+            r'(?:the\s+)?(\w+)',
+        ]
+        
+        # Try each pattern in order of specificity
+        for pattern in patterns:
+            match = re.search(pattern, query)
+            if match:
+                object_name = match.group(1)
+                # Filter out common non-object words
+                if object_name not in ['me', 'is', 'you', 'it', 'that', 'this', 'can', 'will', 'should']:
+                    self.logger.info(f"Extracted object '{object_name}' from query '{query}'")
+                    return object_name
+        
+        # Fallback: remove common command words and return remaining meaningful words
+        words_to_remove = {
+            'please', 'can', 'you', 'help', 'me', 'pass', 'give', 'hand', 'bring', 
+            'get', 'fetch', 'find', 'locate', 'show', 'detect', 'where', 'is', 
+            'the', 'a', 'an', 'all', 'some', 'i', 'need', 'want', 'see', 'to'
+        }
         
         words = query.split()
-        filtered_words = [word for word in words if word not in words_to_remove]
+        filtered_words = [word for word in words if word not in words_to_remove and len(word) > 1]
         
-        # Return the main object (usually the last significant word)
         if filtered_words:
-            return " ".join(filtered_words)
+            # Return the last meaningful word (likely the object)
+            object_name = filtered_words[-1]
+            self.logger.info(f"Fallback extracted object '{object_name}' from query '{query}'")
+            return object_name
+        
+        # Ultimate fallback
+        self.logger.warning(f"Could not extract object from query '{query}', using original")
         return query
     
     def validate_query(self, query: str) -> bool:

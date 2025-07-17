@@ -93,8 +93,8 @@ class VLMObjectRecognition:
             
             vlm_client = self.vlm_factory.create_client(provider)
             
-            # Create optimized prompt
-            prompt = self.text_processor.create_vlm_prompt(processed_query, provider)
+            # Create optimized prompt using the extracted object name
+            prompt = self.text_processor.create_vlm_prompt(object_name, provider)
             
             # Query VLM
             self.logger.info(f"Querying {provider} with prompt: {prompt[:100]}...")
@@ -105,10 +105,13 @@ class VLMObjectRecognition:
                 return {'success': False, 'error': error_msg}
             
             # Parse coordinates
+            self.logger.info("Parsing VLM response...")
             objects = vlm_client.parse_response(vlm_response)
+            self.logger.info(f"VLM client parsed {len(objects)} objects")
             
             # Additional parsing with coordinate parser
             if self.settings.log_vlm_responses and 'response' in vlm_response:
+                self.logger.info("Additional coordinate parsing...")
                 response_text = str(vlm_response['response'])
                 additional_objects = self.coordinate_parser.parse_coordinates(
                     response_text, 
@@ -119,22 +122,27 @@ class VLMObjectRecognition:
                 # Merge objects (remove duplicates)
                 objects.extend(additional_objects)
                 objects = self._remove_duplicate_objects(objects)
+                self.logger.info(f"After merging: {len(objects)} objects")
             
             # Generate response
+            self.logger.info("Generating response...")
             response_text = self.response_generator.generate_response(
                 objects, object_name, provider, processed_query
             )
             
             # Speak response if TTS is enabled
             if self.tts_handler.is_available():
+                self.logger.info("Speaking response...")
                 self.tts_handler.speak(response_text)
             
             # Annotate image
+            self.logger.info("Annotating image...")
             annotated_image = self.image_annotator.annotate_objects(
                 image, objects, object_name
             )
             
             # Save annotated image
+            self.logger.info("Saving annotated image...")
             output_path = self._generate_output_path(image_path, object_name)
             self.image_processor.save_image(annotated_image, output_path)
             
@@ -178,16 +186,21 @@ class VLMObjectRecognition:
                         choice = "2"
                     else:
                         print("\n🎙️ Initiating voice input...")
-                        voice_query = self.voice_handler.get_voice_input_with_fallback()
-                        if voice_query:
-                            print("\n" + "🔥"*60)
-                            print("✅ FINAL VOICE COMMAND CAPTURED")
-                            print("🔥"*60)
-                            print(f"📢 Your Command: '{voice_query}'")
-                            print("🔥"*60)
-                            return voice_query
-                        else:
-                            print("❌ Voice input failed. Please try text input.")
+                        try:
+                            voice_query = self.voice_handler.get_voice_input_with_fallback()
+                            if voice_query:
+                                print("\n" + "🔥"*60)
+                                print("✅ FINAL VOICE COMMAND CAPTURED")
+                                print("🔥"*60)
+                                print(f"📢 Your Command: '{voice_query}'")
+                                print("🔥"*60)
+                                return voice_query
+                            else:
+                                print("❌ Voice input failed. Falling back to text input...")
+                                choice = "2"
+                        except Exception as e:
+                            print(f"❌ Voice input failed: {e}")
+                            print("🔄 Falling back to text input...")
                             choice = "2"
                 
                 if choice == "2":

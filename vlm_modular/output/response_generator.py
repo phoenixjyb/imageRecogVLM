@@ -100,25 +100,71 @@ class ResponseGenerator:
             return "Detection confidence is low - results may be approximate."
     
     def _generate_location_summary(self, objects: List[Dict[str, Any]]) -> str:
-        """Generate location summary for detections."""
+        """Generate location summary with center points for detections."""
         if not objects:
             return ""
         
+        # Generate center point table
+        center_table = self._generate_center_point_table(objects)
+        
         if len(objects) == 1:
-            coords = objects[0]['coordinates']
-            location = self._describe_location(coords)
-            return f"It's located {location}."
+            obj = objects[0]
+            center_h = obj.get('center_h', 0)
+            center_v = obj.get('center_v', 0)
+            descriptive_location = self._describe_location_from_center(center_h, center_v)
+            return f"Center point: H={center_h}, V={center_v} (located {descriptive_location}). {center_table}"
         else:
-            # For multiple objects, give a general distribution
-            locations = [self._describe_location(obj['coordinates']) for obj in objects]
-            unique_locations = list(set(locations))
+            return f"Multiple objects detected. {center_table}"
+    
+    def _generate_center_point_table(self, objects: List[Dict[str, Any]]) -> str:
+        """Generate a table showing center points (H, V) for all detected objects."""
+        if not objects:
+            return ""
+        
+        table_lines = [
+            "\n📊 Center Point Summary:",
+            "| Object ID | H (Horizontal) | V (Vertical) | Format |",
+            "|-----------|----------------|--------------|--------|"
+        ]
+        
+        for i, obj in enumerate(objects, 1):
+            center_h = obj.get('center_h', 0)
+            center_v = obj.get('center_v', 0)
+            format_type = obj.get('format', 'unknown')
             
-            if len(unique_locations) == 1:
-                return f"They are all located {unique_locations[0]}."
-            elif len(unique_locations) <= 3:
-                return f"They are located: {', '.join(unique_locations)}."
-            else:
-                return "They are distributed across different areas of the image."
+            table_lines.append(f"|    {i:2d}     |      {center_h:4d}      |     {center_v:4d}     | {format_type:6s} |")
+        
+        table_lines.append("")  # Empty line after table
+        return "\n".join(table_lines)
+    
+    def _describe_location_from_center(self, center_h: int, center_v: int, 
+                                     image_width: int = 640, image_height: int = 480) -> str:
+        """Describe location in human-readable terms from center point."""
+        # Determine horizontal position
+        if center_h < image_width * 0.33:
+            h_pos = "left"
+        elif center_h > image_width * 0.67:
+            h_pos = "right"
+        else:
+            h_pos = "center"
+        
+        # Determine vertical position
+        if center_v < image_height * 0.33:
+            v_pos = "top"
+        elif center_v > image_height * 0.67:
+            v_pos = "bottom"
+        else:
+            v_pos = "middle"
+        
+        # Combine positions
+        if h_pos == "center" and v_pos == "middle":
+            return "in the center"
+        elif h_pos == "center":
+            return f"in the {v_pos}"
+        elif v_pos == "middle":
+            return f"on the {h_pos}"
+        else:
+            return f"in the {v_pos} {h_pos}"
     
     def _describe_location(self, coords: List[float], image_width: int = 640, image_height: int = 480) -> str:
         """Describe location in human-readable terms."""

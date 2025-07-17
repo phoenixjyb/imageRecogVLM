@@ -53,11 +53,16 @@ class CoordinateParser:
                 try:
                     coords = [float(x) for x in match.groups()]
                     if len(coords) == 4:
-                        objects.append({
-                            'coordinates': coords,
-                            'confidence': self._get_confidence_for_pattern(pattern_name),
-                            'source': f'parser_{pattern_name}'
-                        })
+                        # Create object with center point calculation (assuming pixel coordinates)
+                        obj = self._create_object_with_center(
+                            'detected_object',
+                            coords,
+                            640,  # Default width, will be recalculated if needed
+                            480,  # Default height, will be recalculated if needed
+                            confidence=self._get_confidence_for_pattern(pattern_name)
+                        )
+                        obj['source'] = f'parser_{pattern_name}'
+                        objects.append(obj)
                 except (ValueError, IndexError):
                     continue
         
@@ -100,17 +105,16 @@ class CoordinateParser:
             try:
                 ratios = [float(x) for x in match.groups()]
                 
-                # Convert ratios to pixel coordinates
-                x1 = ratios[0] * image_width
-                y1 = ratios[1] * image_height
-                x2 = ratios[2] * image_width
-                y2 = ratios[3] * image_height
+                # Create object with center point calculation
+                obj = self._create_object_with_center(
+                    'detected_object',
+                    ratios,
+                    image_width,
+                    image_height,
+                    confidence=0.7
+                )
+                objects.append(obj)
                 
-                objects.append({
-                    'coordinates': [x1, y1, x2, y2],
-                    'confidence': 0.6,
-                    'source': 'parser_ratio'
-                })
             except (ValueError, IndexError):
                 continue
         
@@ -136,17 +140,16 @@ class CoordinateParser:
         text_lower = text.lower()
         for pattern, ratio_coords in descriptive_map.items():
             if re.search(pattern, text_lower):
-                # Convert ratios to pixel coordinates
-                x1 = ratio_coords[0] * image_width
-                y1 = ratio_coords[1] * image_height
-                x2 = ratio_coords[2] * image_width
-                y2 = ratio_coords[3] * image_height
-                
-                objects.append({
-                    'coordinates': [x1, y1, x2, y2],
-                    'confidence': 0.3,
-                    'source': 'parser_descriptive'
-                })
+                # Create object with center point calculation from ratio coordinates
+                obj = self._create_object_with_center(
+                    'detected_object',
+                    list(ratio_coords),
+                    image_width,
+                    image_height,
+                    confidence=0.3
+                )
+                obj['source'] = 'parser_descriptive'
+                objects.append(obj)
                 break  # Only use first match
         
         return objects
@@ -200,10 +203,17 @@ class CoordinateParser:
     
     def _is_duplicate(self, coords: List[float], existing: List[Dict[str, Any]], tolerance: float = 10) -> bool:
         """Check if coordinates are duplicate of existing ones."""
+        if len(coords) != 4:
+            return False
+            
         x1, y1, x2, y2 = coords
         
         for existing_obj in existing:
-            ex1, ey1, ex2, ey2 = existing_obj['coordinates']
+            existing_coords = existing_obj.get('coordinates', [])
+            if len(existing_coords) != 4:
+                continue
+                
+            ex1, ey1, ex2, ey2 = existing_coords
             
             # Check if coordinates are within tolerance
             if (abs(x1 - ex1) <= tolerance and abs(y1 - ey1) <= tolerance and
@@ -256,3 +266,71 @@ class CoordinateParser:
                     continue
         
         return results
+    
+    def calculate_center_point(self, coordinates: List[float], image_width: int, image_height: int) -> Dict[str, Any]:
+        """Calculate center point from coordinates in different formats."""
+        if len(coordinates) == 2:
+            # Assume it's already center point coordinates (H, V)
+            h, v = coordinates
+            return {
+                'center_h': int(h),
+                'center_v': int(v),
+                'format': 'center_point'
+            }
+        elif len(coordinates) == 4:
+            x1, y1, x2, y2 = coordinates
+            
+            # Check if coordinates are ratios (between 0 and 1)
+            if all(0 <= coord <= 1 for coord in coordinates):
+                # Convert ratios to pixel coordinates
+                x1_pixel = x1 * image_width
+                y1_pixel = y1 * image_height
+                x2_pixel = x2 * image_width
+                y2_pixel = y2 * image_height
+                
+                # Calculate center point
+                center_h = int((x1_pixel + x2_pixel) / 2)
+                center_v = int((y1_pixel + y2_pixel) / 2)
+                
+                return {
+                    'center_h': center_h,
+                    'center_v': center_v,
+                    'bbox_pixels': [int(x1_pixel), int(y1_pixel), int(x2_pixel), int(y2_pixel)],
+                    'bbox_ratios': coordinates,
+                    'format': 'ratio_bbox'
+                }
+            else:
+                # Already pixel coordinates, calculate center
+                center_h = int((x1 + x2) / 2)
+                center_v = int((y1 + y2) / 2)
+                
+                return {
+                    'center_h': center_h,
+                    'center_v': center_v,
+                    'bbox_pixels': [int(x1), int(y1), int(x2), int(y2)],
+                    'format': 'pixel_bbox'
+                }
+        else:
+            # Invalid coordinate format
+            return {
+                'center_h': 0,
+                'center_v': 0,
+                'format': 'invalid'
+            }
+
+    def _create_object_with_center(self, object_name: str, coordinates: List[float], 
+                                 image_width: int, image_height: int, 
+                                 confidence: float = 0.8) -> Dict[str, Any]:
+        """Create object dictionary with center point calculation."""
+        center_data = self.calculate_center_point(coordinates, image_width, image_height)
+        
+        return {
+            'object': object_name,
+            'coordinates': coordinates,
+            'center_h': center_data['center_h'],
+            'center_v': center_data['center_v'],
+            'bbox_pixels': center_data.get('bbox_pixels', coordinates if len(coordinates) == 4 else []),
+            'confidence': confidence,
+            'format': center_data['format'],
+            'source': 'coordinate_parser'
+        }

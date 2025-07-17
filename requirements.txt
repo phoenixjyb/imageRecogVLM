@@ -4,6 +4,9 @@ requests>=2.31.0
 pillow>=10.0.0
 SpeechRecognition>=3.10.0
 
+# Voice recognition dependencies
+pocketsphinx>=5.0.0  # For offline speech recognition (recommended)
+
 # Optional dependencies for enhanced functionality
 # For voice input (may require additional system packages)
 # PyAudio  # Uncomment if needed for better microphone support
