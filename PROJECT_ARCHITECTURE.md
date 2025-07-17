@@ -401,7 +401,7 @@ sequenceDiagram
 ## 📈 Development Evolution
 
 ```mermaid
-gitgraph
+gitgraph:
     commit id: "Initial Monolithic System"
     commit id: "Basic VLM Integration"
     commit id: "Voice Input Added"
