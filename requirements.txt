@@ -1,7 +1,16 @@
-requests
-pillow
-gtts
-pygame
-tqdm
-openai
-httpx[socks]
+# VLM Object Recognition System - Modular Architecture
+# Core dependencies
+requests>=2.31.0
+pillow>=10.0.0
+SpeechRecognition>=3.10.0
+
+# Optional dependencies for enhanced functionality
+# For voice input (may require additional system packages)
+# PyAudio  # Uncomment if needed for better microphone support
+
+# For advanced TTS (optional alternatives to system TTS)
+# gtts>=2.3.0      # Google Text-to-Speech (requires internet)
+# pyttsx3>=2.90    # Offline TTS alternative
+
+# Development and testing
+# pytest>=7.0.0    # Uncomment for running tests

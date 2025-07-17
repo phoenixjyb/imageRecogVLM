@@ -1,294 +1,135 @@
-# VLM Object Recognition System (Voice + Multi-Mode)
+# VLM Object Recognition System - Modular Architecture
 
-🤖 A comprehensive Vision Language Model (VLM) system that combines **voice input**, **text input**, and **multiple VLM processing pathways** for intelligent object recognition and localization.
+🤖 A professional, modular Vision Language Model (VLM) object recognition system with support for multiple providers, voice input, and advanced image annotation.
 
 ## 🌟 Features
 
-### 🎤 Input Modes
-- **Voice Input**: Speak your commands naturally in English or Chinese
-- **Text Input**: Traditional keyboard input with multilingual support
-- **Automatic Fallback**: Voice input falls back to text if recognition fails
+- **Multi-VLM Support**: Grok-4 (X.AI), Qwen-VL (Alibaba), LLaVA (local)
+- **Voice Input**: Speech recognition with multilingual support and fallbacks
+- **Advanced Parsing**: Sophisticated coordinate parsing for different VLM response formats
+- **Image Annotation**: Professional annotation with bounding boxes and star markers
+- **Text-to-Speech**: Cross-platform TTS support
+- **Modular Design**: Clean, maintainable, and extensible architecture
 
-### 🤖 VLM Processing Options
-- **Cloud VLM (Grok-4)**: High accuracy via X.AI API
-- **Cloud VLM (Qwen-VL)**: Excellent Chinese support via DashScope API  
-- **Local VLM (LLaVA)**: Privacy-focused processing via Ollama
+## 🏗️ Architecture
 
-### 🌐 Multilingual Support
-- **English Commands**: "please grab the apple to me", "find the phone"
-- **Chinese Commands**: "请帮我拿苹果", "找手机给我"
-- **Mixed Language**: "给请帮我拿雪碧, i mean bring me sprite"
-- **Auto-Translation**: Chinese inputs automatically translated to English
+This is the **modular version** of the VLM Object Recognition System, completely refactored from the original monolithic implementation into a professional, maintainable architecture.
 
-### 🎯 Object Recognition & Localization
-- Precise coordinate detection with center-point accuracy
-- Multiple object instance support
-- Visual annotation with star markers
-- Coordinate scaling for different image resolutions
-
-### 🔊 Audio Feedback
-- Text-to-speech responses using macOS built-in `say` command
-- Concise audio summaries ("Object found" vs "Object not found")
-- No internet required for TTS
+```
+📁 vlm_modular/
+├── 🔧 config/         # Configuration and API management
+├── 🎤 input/          # Voice and text processing
+├── 🤖 vlm/            # VLM provider implementations
+├── 🖼️ image/          # Image processing and annotation
+├── 🔊 output/         # Response generation and TTS
+├── 🛠️ utils/          # Utility functions
+└── 🚀 main.py        # Application entry point
+```
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 1. Installation
 
 ```bash
-# Install Python dependencies
-pip install SpeechRecognition pyaudio pillow gtts pygame requests openai
+# Clone the repository
+git clone https://github.com/phoenixjyb/imageRecogVLM.git
+cd imageRecogVLM
 
-# For macOS users (if pyaudio installation fails)
-brew install portaudio
-pip install pyaudio
+# Switch to modular architecture branch
+git checkout modular-architecture
 
-# For local VLM support (optional)
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull llava:latest
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Setup API Keys
+
+```bash
+# For Grok (X.AI)
+export XAI_API_KEY="your_grok_api_key"
+
+# For Qwen (Alibaba)
+export DASHSCOPE_API_KEY="your_qwen_api_key"
+
+# For LLaVA (local) - install Ollama
+brew install ollama  # macOS
+ollama pull llava
 ollama serve
 ```
 
-### Environment Setup
+### 3. Run the System
 
 ```bash
-# Set API keys (choose based on your preferred VLM)
-export XAI_API_KEY="your_xai_api_key_here"          # For Grok-4
-export DASHSCOPE_API_KEY="your_dashscope_key_here"  # For Qwen-VL
+cd vlm_modular
+python main.py
 ```
 
-### Basic Usage
+## 🎯 Supported Providers
 
-```bash
-python imageRecogVLM.py
-```
+| Provider | Type | API Key Required | Best For |
+|----------|------|------------------|----------|
+| **Grok** (X.AI) | Cloud | ✅ XAI_API_KEY | High accuracy, latest models |
+| **Qwen** (Alibaba) | Cloud | ✅ DASHSCOPE_API_KEY | Good table parsing, Chinese support |
+| **LLaVA** | Local | ❌ (Ollama) | Privacy, offline use, no costs |
 
-## 📖 Usage Examples
+## 📖 Documentation
 
-### Voice Input Examples
+- 📚 **[Detailed Documentation](vlm_modular/README.md)** - Complete usage guide
+- 🧪 **Testing**: Run `python vlm_modular/test_system.py`
+- 🎤 **Voice Input**: Supports English and Chinese with fallbacks
+- 🔊 **TTS**: Cross-platform text-to-speech (macOS, Linux, Windows)
 
-**English Voice Commands:**
-- "Please grab the apple to me"
-- "Find me the phone"
-- "Show me the bottle"
-- "Locate the keys"
+## 🆚 Architecture Comparison
 
-**Chinese Voice Commands:**
-- "请帮我拿苹果" (Please help me get the apple)
-- "找手机给我" (Find the phone for me)
-- "给我拿可乐" (Get me the coke)
-
-### Text Input Examples
-
-**English Text:**
-```
-💬 Enter your command: please grab the apple to me
-💬 Enter your command: find the phone
-```
-
-**Chinese Text:**
-```
-💬 Enter your command: 请帮我拿苹果
-💬 Enter你的命令: 找手机给我
-```
-
-## 🏗️ System Architecture
-
-```mermaid
-graph TB
-    A[User Input] --> B{Input Mode}
-    B -->|Voice| C[Speech Recognition]
-    B -->|Text| D[Text Input]
-    C --> E[Voice-to-Text Conversion]
-    E --> F[Language Detection]
-    D --> F
-    F --> G{Chinese Detected?}
-    G -->|Yes| H[Chinese-to-English Translation]
-    G -->|No| I[Object Extraction]
-    H --> I
-    I --> J{VLM Selection}
-    J -->|Cloud| K[Grok-4 API]
-    J -->|Cloud| L[Qwen-VL API]
-    J -->|Local| M[LLaVA via Ollama]
-    K --> N[Response Processing]
-    L --> N
-    M --> N
-    N --> O[Coordinate Parsing]
-    O --> P[Response Generation]
-    P --> Q[Text-to-Speech]
-    P --> R[Visual Annotation]
-```
+| Feature | Original (master) | Modular (this branch) |
+|---------|-------------------|----------------------|
+| **Structure** | Single 1000+ line file | 6 modular packages (24+ files) |
+| **Maintainability** | ❌ Hard to modify | ✅ Easy to update components |
+| **Testing** | ❌ Monolithic testing | ✅ Component-level testing |
+| **Extensibility** | ❌ Hard to add providers | ✅ Simple to add new VLMs |
+| **Code Quality** | ❌ Mixed concerns | ✅ Clean separation |
+| **Documentation** | ❌ Basic | ✅ Comprehensive |
 
 ## 🔧 Configuration
 
-### Voice Input Settings
-- **Timeout**: 10 seconds for speech detection
-- **Phrase Limit**: 8 seconds maximum recording
-- **Languages**: English (en-US), Chinese (zh-CN)
-- **Fallback**: Offline recognition via CMU Sphinx
+Environment variables for customization:
 
-### VLM Processing Options
-- **Grok-4**: Requires XAI_API_KEY, highest accuracy
-- **Qwen-VL**: Requires DASHSCOPE_API_KEY, excellent for Chinese
-- **LLaVA Local**: Requires Ollama + LLaVA model, privacy-focused
-
-### Image Processing
-- **Resolution**: Uses original image resolution by default
-- **Format**: JPEG with 95% quality for original resolution
-- **Annotation**: Yellow star with red outline for detected objects
-
-## 📁 Project Structure
-
-```
-vlmTry/
-├── imageRecogVLM.py          # Main application
-├── sampleImages/             # Test images directory
-│   └── image_000777_rsz.jpg  # Sample image
-├── README.md                 # English documentation
-├── README_CN.md              # Chinese documentation
-└── system_arch.mmd           # System architecture diagram
-```
-
-## 🛠️ API Integration
-
-### Grok-4 (X.AI)
-```python
-# High accuracy cloud processing
-headers = {"Authorization": f"Bearer {XAI_API_KEY}"}
-url = "https://api.x.ai/v1/chat/completions"
-```
-
-### Qwen-VL (DashScope)
-```python
-# Excellent Chinese support
-client = OpenAI(
-    api_key=DASHSCOPE_API_KEY,
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-)
-```
-
-### LLaVA (Local)
-```python
-# Privacy-focused local processing
-url = "http://localhost:11434/api/generate"
-```
-
-## 🔊 Voice Input Technical Details
-
-### Speech Recognition Pipeline
-1. **Microphone Calibration**: Auto-adjusts for ambient noise
-2. **Multi-language Detection**: Tries English first, then Chinese
-3. **Offline Fallback**: Uses CMU Sphinx if internet unavailable
-4. **Error Handling**: Graceful fallback to text input
-
-### Supported Voice Commands
-- **Grab Pattern**: "grab the [object] to me"
-- **Find Pattern**: "find me the [object]"
-- **Show Pattern**: "show me the [object]"
-- **Locate Pattern**: "locate the [object]"
-
-## 🌍 Multilingual Support
-
-### Chinese Translation Patterns
-```python
-chinese_patterns = {
-    r'请.*?拿.*?给我': 'please grab {} to me',
-    r'帮我.*?拿.*': 'help me get {}',
-    r'找.*?给我': 'find {} for me',
-    # Object translations
-    r'苹果': 'apple',
-    r'手机|电话': 'phone',
-    r'可乐': 'coke',
-    r'雪碧': 'sprite'
-}
-```
-
-## 📊 Response Format
-
-### Console Output
-```
-🤖 VLM Object Recognition System (Voice + 3-Mode)
-🎤 Input Mode Selection
-💬 Command received: 'find the phone'
-🎯 Target object identified: 'phone'
-🚀 Calling Grok-4 Vision API (Cloud)...
-📊 COORDINATE SUMMARY TABLE:
-| Object ID | H (Horizontal) | V (Vertical) |
-|-----------|----------------|--------------|
-|     1     |      320       |     240      |
-```
-
-### Audio Output
-- **Success**: "Phone found"
-- **Failure**: "Object not found"
-
-## 🚀 Performance
-
-### Processing Times (Typical)
-- **Voice Recognition**: 2-5 seconds
-- **Grok-4 API**: 3-8 seconds
-- **Qwen-VL API**: 2-6 seconds
-- **Local LLaVA**: 5-15 seconds (depending on hardware)
-
-### Accuracy Comparison
-- **Grok-4**: Highest accuracy, best for complex scenes
-- **Qwen-VL**: Excellent for Chinese objects/text
-- **LLaVA Local**: Good accuracy, privacy-focused
-
-## 🔍 Troubleshooting
-
-### Voice Input Issues
 ```bash
-# Check microphone permissions
-# macOS: System Preferences > Security & Privacy > Microphone
-
-# Install/reinstall audio dependencies
-brew install portaudio
-pip install --upgrade pyaudio SpeechRecognition
+export VLM_DEFAULT_PROVIDER="grok"    # Default VLM provider
+export VLM_ENABLE_VOICE="true"        # Enable voice input
+export VLM_ENABLE_TTS="true"          # Enable text-to-speech
+export VLM_IMAGE_WIDTH="640"          # Output image width
+export VLM_IMAGE_HEIGHT="480"         # Output image height
+export VLM_DEBUG="false"              # Enable debug logging
 ```
 
-### API Issues
-```bash
-# Verify API keys
-echo $XAI_API_KEY
-echo $DASHSCOPE_API_KEY
+## 📊 Performance
 
-# Test network connectivity
-curl -I https://api.x.ai
-curl -I https://dashscope.aliyuncs.com
-```
-
-### Local VLM Issues
-```bash
-# Check Ollama status
-ollama list
-ollama ps
-
-# Restart Ollama service
-ollama serve
-
-# Pull LLaVA model if missing
-ollama pull llava:latest
-```
+The modular architecture provides:
+- **Better Error Handling**: Graceful failures with specific error messages
+- **Improved Parsing**: 6+ coordinate format patterns supported
+- **Enhanced Reliability**: Retry mechanisms and fallbacks
+- **Professional Logging**: Comprehensive debugging support
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+This modular architecture makes contributing easy:
 
-## 📄 License
+1. **Add new VLM providers**: Extend the `vlm/` package
+2. **Improve parsing**: Enhance `image/coordinate_parser.py`
+3. **Add input methods**: Extend the `input/` package
+4. **Enhance output**: Improve `output/` components
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## 📜 License
 
-## 🙏 Acknowledgments
+This project is provided for educational and research purposes.
 
-- **OpenAI** for GPT models and API standards
-- **X.AI** for Grok-4 Vision API
-- **Alibaba** for Qwen-VL and DashScope API
-- **Ollama** for local LLM infrastructure
-- **LLaVA** for open-source vision language model
-- **Google** for Speech Recognition API
-- **CMU Sphinx** for offline speech recognition
+## 🔗 Links
+
+- **Original Version**: See `master` branch
+- **Issues & Features**: [GitHub Issues](https://github.com/phoenixjyb/imageRecogVLM/issues)
+- **Pull Requests**: [GitHub PRs](https://github.com/phoenixjyb/imageRecogVLM/pulls)
+
+---
+
+**Note**: This is the modular architecture branch. For the original monolithic implementation, switch to the `master` branch.
