@@ -35,37 +35,57 @@ class VoiceHandler:
             return None
         
         try:
-            print("Listening for voice input...")
+            print("🔴 Preparing microphone...")
+            print("🔧 Calibrating microphone for ambient noise...")
             
             with self.microphone as source:
+                self.recognizer.adjust_for_ambient_noise(source, duration=1)
+            
+            print("🎤 Ready to listen! Please speak your command...")
+            print("   💡 Tip: Speak clearly and wait for processing")
+            
+            with self.microphone as source:
+                print("🔴 Recording... (speak now)")
                 # Listen for audio with timeout
                 audio = self.recognizer.listen(
                     source, 
                     timeout=self.settings.voice_timeout,
                     phrase_time_limit=self.settings.voice_phrase_time_limit
                 )
+                print("⏹️  Recording complete, processing...")
             
-            print("Processing voice input...")
+            print("🔍 Converting speech to text...")
             
-            # Try online recognition first
+            # Try online recognition first with shorter timeout
             try:
+                import socket
+                # Set a shorter timeout for network operations
+                socket.setdefaulttimeout(5.0)
                 text = self.recognizer.recognize_google(audio, language=language)
                 self.logger.info(f"Voice recognition successful: {text}")
+                print(f"\n{'='*50}")
+                print("🎯 VOICE RECOGNITION RESULT")
+                print("="*50)
+                print(f"📝 Language: {language}")
+                print(f"🗣️  Recognized Text: '{text}'")
+                print("="*50)
                 return text.lower().strip()
             
-            except sr.RequestError:
+            except (sr.RequestError, OSError, ConnectionError, TimeoutError) as e:
                 # Fallback to offline recognition
+                print(f"   ❌ Online recognition failed ({str(e)[:50]}...), trying offline...")
                 self.logger.warning("Online voice recognition failed, trying offline...")
                 return self._offline_recognition(audio)
         
         except sr.WaitTimeoutError:
-            print("No voice input detected within timeout period")
+            print("❌ No voice input detected within timeout period")
             return None
         except sr.UnknownValueError:
-            print("Could not understand the voice input")
+            print("❌ Could not understand the voice input")
             return None
         except Exception as e:
             self.logger.error(f"Voice input error: {e}")
+            print(f"❌ Voice input error: {e}")
             return None
     
     def _offline_recognition(self, audio) -> Optional[str]:

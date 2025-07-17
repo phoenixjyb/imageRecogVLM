@@ -80,7 +80,12 @@ class VLMObjectRecognition:
             if not image_result:
                 return {'success': False, 'error': 'Failed to load image'}
             
-            image, base64_data = image_result
+            # Unpack the result safely
+            try:
+                image, base64_data = image_result
+            except (ValueError, TypeError) as e:
+                self.logger.error(f"Failed to unpack image result: {e}")
+                return {'success': False, 'error': 'Invalid image processing result'}
             
             # Get VLM provider
             if not provider:
@@ -149,20 +154,62 @@ class VLMObjectRecognition:
             return {'success': False, 'error': str(e)}
     
     def _get_user_query(self) -> Optional[str]:
-        """Get query from user via voice or text input."""
-        if self.settings.enable_voice_input:
-            print("Please speak your object detection query...")
-            voice_query = self.voice_handler.get_voice_input_with_fallback()
-            if voice_query:
-                print(f"Voice input: {voice_query}")
-                return voice_query
+        """Get query from user via voice or text input with user choice."""
+        print("\n🎤 Input Mode Selection")
+        print("=" * 50)
+        print("1. 🎙️  Voice Input")
+        print("   - Speak your command")
+        print("   - Automatically converted to text")
+        print("   - Supports English and Chinese")
+        print("")
+        print("2. ⌨️  Text Input") 
+        print("   - Type your command")
+        print("   - Current default mode")
+        print("   - Supports English and Chinese")
+        print("=" * 50)
         
-        # Fallback to text input
-        try:
-            text_query = input("Enter object to detect: ").strip()
-            return text_query if text_query else None
-        except KeyboardInterrupt:
-            return None
+        while True:
+            try:
+                choice = input("Choose input mode (1 for Voice, 2 for Text): ").strip()
+                
+                if choice == "1":
+                    if not self.settings.enable_voice_input:
+                        print("❌ Voice input is disabled. Using text input instead.")
+                        choice = "2"
+                    else:
+                        print("\n🎙️ Initiating voice input...")
+                        voice_query = self.voice_handler.get_voice_input_with_fallback()
+                        if voice_query:
+                            print("\n" + "🔥"*60)
+                            print("✅ FINAL VOICE COMMAND CAPTURED")
+                            print("🔥"*60)
+                            print(f"📢 Your Command: '{voice_query}'")
+                            print("🔥"*60)
+                            return voice_query
+                        else:
+                            print("❌ Voice input failed. Please try text input.")
+                            choice = "2"
+                
+                if choice == "2":
+                    print("\n⌨️  Text input mode selected")
+                    text_query = input("💬 Enter your command: ").strip()
+                    if text_query:
+                        print("\n" + "📝"*60)
+                        print("✅ TEXT COMMAND ENTERED")
+                        print("📝"*60)
+                        print(f"⌨️  Your Command: '{text_query}'")
+                        print("📝"*60)
+                        return text_query
+                    else:
+                        print("❌ No command entered. Please try again.")
+                        continue
+                
+                if choice not in ["1", "2"]:
+                    print("❌ Invalid choice. Please enter 1 or 2.")
+                    continue
+                    
+            except KeyboardInterrupt:
+                return None
     
     def _remove_duplicate_objects(self, objects: list) -> list:
         """Remove duplicate objects based on coordinate similarity."""
