@@ -1,6 +1,6 @@
 # VLM Object## ✨ Key Features
 
-- **🤖 Multi-VLM Support**: Grok-4 (X.AI), Qwen-VL-Max (Alibaba), LLaVA (local)cognition System - Production Ready
+- **🤖 Multi-VLM Support**: Grok-4 (X.AI), Qwen-VL-Max (Alibaba), Kimi (Moonshot), LLaVA (local)cognition System - Production Ready
 
 🤖 A **production-ready**, modular Vision Language Model (VLM) object recognition system with comprehensive testing, professional architecture, and multi-provider support.
 
@@ -9,7 +9,7 @@
 ✅ **Fully Tested**: 100% functional parity with original implementation  
 ✅ **Comprehensive Documentation**: Complete project documentation and usage guides  
 ✅ **Professional Structure**: Clean, organized codebase with proper testing framework  
-✅ **Multi-Provider Support**: Grok (X.AI), Qwen (Alibaba), LLaVA (local)  
+✅ **Multi-Provider Support**: Grok (X.AI), Qwen (Alibaba), Kimi (Moonshot), LLaVA (local)  
 ✅ **Enterprise Ready**: Modular architecture with dependency injection and error handling  
 
 ## 🌟 Key Features
@@ -69,11 +69,14 @@ pip install -r requirements.txt
 ### 2. Setup API Keys
 
 ```bash
-# For Grok (X.AI)
+# For Grok-4 API
 export XAI_API_KEY="your_grok_api_key"
 
-# For Qwen (Alibaba)
+# For Qwen-VL-Max API
 export DASHSCOPE_API_KEY="your_qwen_api_key"
+
+# For Kimi API  
+export MOONSHOT_API_KEY="your_kimi_api_key"
 
 # For LLaVA (local) - install Ollama
 brew install ollama  # macOS
@@ -94,6 +97,7 @@ python main.py
 |----------|------|------------------|----------|
 | **Grok** (X.AI) | Cloud | ✅ XAI_API_KEY | High accuracy, latest models |
 | **Qwen** (Alibaba) | Cloud | ✅ DASHSCOPE_API_KEY | Good table parsing, Chinese support |
+| **Kimi** (Moonshot) | Cloud | ✅ MOONSHOT_API_KEY | Good accuracy, Chinese support |
 | **LLaVA** | Local | ❌ (Ollama) | Privacy, offline use, no costs |
 
 ## 📖 Documentation & Testing

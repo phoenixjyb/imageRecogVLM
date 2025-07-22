@@ -10,7 +10,7 @@ class VLMSettings:
     
     # VLM Provider settings
     default_vlm_provider: str = "qwen"
-    available_providers: list = field(default_factory=lambda: ["qwen", "grok", "llava"])
+    available_providers: list = field(default_factory=lambda: ["qwen", "grok", "kimi", "llava"])
     
     # Voice input settings
     enable_voice_input: bool = True
@@ -34,6 +34,7 @@ class VLMSettings:
     # API settings
     grok_model: str = "grok-4-0709"  # Same model as original
     qwen_model: str = "qwen-vl-max"  # Updated model
+    kimi_model: str = "moonshot-v1-32k-vision-preview"  # Moonshot Kimi vision model
     llava_model: str = "llava"
     
     # Request settings

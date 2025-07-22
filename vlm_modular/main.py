@@ -369,12 +369,13 @@ def main():
     if len(providers) > 1:
         print(f"Available providers: {', '.join(providers)}")
         print("1. qwen")
-        print("2. grok") 
-        print("3. llava")
-        choice = input(f"Choose provider (1/2/3, default: 1 - qwen): ").strip()
+        print("2. grok")
+        print("3. kimi") 
+        print("4. llava")
+        choice = input(f"Choose provider (1/2/3/4, default: 1 - qwen): ").strip()
         
-        # Map number choices to provider names (Qwen is now #1)
-        provider_map = {'1': 'qwen', '2': 'grok', '3': 'llava'}
+        # Map number choices to provider names (Qwen is still #1)
+        provider_map = {'1': 'qwen', '2': 'grok', '3': 'kimi', '4': 'llava'}
         
         if choice in provider_map and provider_map[choice] in providers:
             provider = provider_map[choice]

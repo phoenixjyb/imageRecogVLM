@@ -24,6 +24,7 @@ LOCAL_RESIZE_WIDTH = None  # Will use original resolution for local too
 # Securely load API keys from environment variables
 XAI_API_KEY = os.getenv('XAI_API_KEY')  # For Grok-4 cloud mode
 DASHSCOPE_API_KEY = os.getenv('DASHSCOPE_API_KEY')  # For Qwen cloud mode
+MOONSHOT_API_KEY = os.getenv('MOONSHOT_API_KEY')  # For Kimi cloud mode
 
 def extract_object(input_text: str) -> str:
     """
@@ -189,6 +190,21 @@ def build_grok_prompt(object_str: str, image_width: int, image_height: int) -> s
 def build_qwen_prompt(object_str: str, image_width: int, image_height: int) -> str:
     """
     Build a Qwen-specific prompt that lets the VLM naturally infer center points.
+    """
+    return (
+        f"Analyze this {image_width}x{image_height} pixel image. "
+        f"Look for '{object_str}' objects in the image. "
+        f"For each '{object_str}' you find, identify where the center of that object is located. "
+        f"Provide the center coordinates in this table format: "
+        f"| H | V | ID |"
+        f"|---|---|----| "
+        f"Where H is the horizontal pixel position and V is the vertical pixel position of the center. "
+        f"If you don't see any '{object_str}', return: | 0 | 0 | 0 |"
+    )
+
+def build_kimi_prompt(object_str: str, image_width: int, image_height: int) -> str:
+    """
+    Build a Kimi-specific prompt for Moonshot API.
     """
     return (
         f"Analyze this {image_width}x{image_height} pixel image. "
@@ -551,6 +567,8 @@ def generate_response(object_str: str, recognized: bool, coord_str: str, raw_res
             vlm_name = "QWEN-VL-MAX"
         elif vlm_choice == "grok":
             vlm_name = "GROK-4"
+        elif vlm_choice == "kimi":
+            vlm_name = "KIMI (MOONSHOT)"
         elif vlm_choice == "local":
             vlm_name = "LLAVA (LOCAL)"
         
@@ -718,7 +736,7 @@ def show_image_with_star(image_path: str, x: int, y: int, star_size: int = 30):
 def get_vlm_choice() -> str:
     """
     Interactive function to let user choose between cloud VLM processing options and local processing.
-    Returns 'grok' for Grok API, 'qwen' for Qwen API, or 'local' for LLaVA via Ollama.
+    Returns 'grok' for Grok API, 'qwen' for Qwen API, 'kimi' for Kimi API, or 'local' for LLaVA via Ollama.
     """
     print("\n🤖 VLM Processing Mode Selection")
     print("=" * 50)
@@ -740,15 +758,27 @@ def get_vlm_choice() -> str:
         print("   - Set DASHSCOPE_API_KEY environment variable")
     print("")
     
+    # Check Kimi availability
+    kimi_available = bool(MOONSHOT_API_KEY)
+    if kimi_available:
+        print("3. ☁️  Cloud VLM (Kimi via Moonshot API) ✅ Available")
+        print("   - Good accuracy, excellent Chinese support")
+        print("   - Requires internet & Moonshot API key")
+        print("   - Processing cost applies")
+    else:
+        print("3. ☁️  Cloud VLM (Kimi via Moonshot API) ❌ Not Available")
+        print("   - Set MOONSHOT_API_KEY environment variable")
+    print("")
+    
     # Check Ollama availability
     ollama_available = check_ollama_availability()
     if ollama_available:
-        print("3. 🖥️  Local VLM (LLaVA via Ollama) ✅ Available")
+        print("4. 🖥️  Local VLM (LLaVA via Ollama) ✅ Available")
         print("   - Privacy focused")
         print("   - No internet required")
         print("   - Free processing")
     else:
-        print("3. 🖥️  Local VLM (LLaVA via Ollama) ❌ Not Available")
+        print("4. 🖥️  Local VLM (LLaVA via Ollama) ❌ Not Available")
         print("   - Install Ollama: 'curl -fsSL https://ollama.com/install.sh | sh'")
         print("   - Install LLaVA: 'ollama pull llava:7b'")
         print("   - Start service: 'ollama serve'")
@@ -756,7 +786,7 @@ def get_vlm_choice() -> str:
     print("=" * 50)
     
     while True:
-        choice = input("Choose processing mode (1 for Grok, 2 for Qwen, 3 for Local): ").strip()
+        choice = input("Choose processing mode (1 for Grok, 2 for Qwen, 3 for Kimi, 4 for Local): ").strip()
         if choice == "1":
             return "grok"
         elif choice == "2":
@@ -765,12 +795,17 @@ def get_vlm_choice() -> str:
                 continue
             return "qwen"
         elif choice == "3":
+            if not kimi_available:
+                print("❌ MOONSHOT_API_KEY not set. Please set your Moonshot API key.")
+                continue
+            return "kimi"
+        elif choice == "4":
             if not ollama_available:
                 print("❌ Local VLM not available. Please install and start Ollama with LLaVA model.")
                 continue
             return "local"
         else:
-            print("❌ Invalid choice. Please enter 1, 2, or 3.")
+            print("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
 
 def call_local_vlm_api(prompt: str, image_path: str) -> str:
     """
@@ -874,6 +909,53 @@ def call_qwen_api(prompt: str, image_path: str, api_key: str) -> str:
         
     except Exception as e:
         raise Exception(f"Qwen API request failed: {str(e)}")
+
+def call_kimi_api(prompt: str, image_path: str, api_key: str) -> str:
+    """
+    Call Moonshot Kimi API with prompt and image.
+    Returns raw text content for display.
+    """
+    print("🔄 Preparing Kimi API request...")
+    api_start_time = time.time()
+    
+    # Encode image to base64
+    base64_image, original_width, original_height, new_width, new_height = encode_image(image_path)
+    
+    # Initialize OpenAI client for Kimi (Moonshot-compatible endpoint)
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.moonshot.cn/v1",
+    )
+    
+    print("🌐 Sending API request to Moonshot Kimi...")
+    request_start_time = time.time()
+    
+    try:
+        completion = client.chat.completions.create(
+            model="moonshot-v1-32k",
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                ]
+            }],
+            temperature=0.3
+        )
+        
+        request_end_time = time.time()
+        print(f"📡 Kimi API response received in {request_end_time - request_start_time:.2f} seconds")
+        
+        response_content = completion.choices[0].message.content
+        print(f"📄 Kimi response length: {len(response_content)} characters")
+        
+        api_end_time = time.time()
+        print(f"✅ Total Kimi API process completed in {api_end_time - api_start_time:.2f} seconds")
+        
+        return response_content
+        
+    except Exception as e:
+        raise Exception(f"Kimi API request failed: {str(e)}")
 
 def check_ollama_availability() -> bool:
     """
@@ -1116,7 +1198,7 @@ def get_user_input() -> str:
 def main():
     """
     Main function to orchestrate the process.
-    Now supports voice input, text input, and three VLM pathways: Grok-4, Qwen-VL-Max, and local LLaVA.
+    Now supports voice input, text input, and four VLM pathways: Grok-4, Qwen-VL-Max, Kimi, and local LLaVA.
     """
     print("=" * 60)
     print("🤖 VLM Object Recognition System (Voice + 3-Mode)")
@@ -1168,6 +1250,8 @@ def main():
             prompt = build_grok_prompt(object_str, new_width, new_height)
         elif vlm_choice == "qwen":
             prompt = build_qwen_prompt(object_str, new_width, new_height)
+        elif vlm_choice == "kimi":
+            prompt = build_kimi_prompt(object_str, new_width, new_height)
         else:  # local
             prompt = build_local_prompt(object_str, new_width, new_height)
         
@@ -1187,6 +1271,13 @@ def main():
                 raise ValueError("DASHSCOPE_API_KEY environment variable not set. Required for Qwen mode.")
             print(f"\n🚀 Calling Qwen-VL-Max Vision API (Cloud)...")
             response_text = call_qwen_api(prompt, image_path, DASHSCOPE_API_KEY)
+            
+        elif vlm_choice == "kimi":
+            # Validate API key for Kimi mode
+            if not MOONSHOT_API_KEY:
+                raise ValueError("MOONSHOT_API_KEY environment variable not set. Required for Kimi mode.")
+            print(f"\n🚀 Calling Kimi Vision API (Cloud)...")
+            response_text = call_kimi_api(prompt, image_path, MOONSHOT_API_KEY)
             
         else:  # local
             print(f"\n🖥️  Calling Local VLM (LLaVA via Ollama)...")

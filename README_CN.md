@@ -52,12 +52,12 @@ cd testing && python compare_vlm_outputs.py
 ```**全面测试**：与原始实现100%功能一致性  
 ✅ **综合文档**：完整的项目文档和使用指南  
 ✅ **专业结构**：清晰、有序的代码库，配备适当的测试框架  
-✅ **多提供商支持**：Grok (X.AI)、Qwen (阿里云)、LLaVA (本地)  
+✅ **多提供商支持**：Grok (X.AI)、Qwen (阿里云)、Kimi (月之暗面)、LLaVA (本地)  
 ✅ **企业级就绪**：具有依赖注入和错误处理的模块化架构  
 
 ## 🌟 核心功能
 
-- **🤖 多VLM支持**：Grok-4 (X.AI)、Qwen-VL-Max (阿里云)、LLaVA (本地)
+- **🤖 多VLM支持**：Grok-4 (X.AI)、Qwen-VL-Max (阿里云)、Kimi (月之暗面)、LLaVA (本地)
 - **🎤 语音输入**：多语言语音识别和回退机制
 - **🧠 高级解析**：支持不同VLM响应格式的智能坐标解析
 - **🖼️ 图像标注**：专业的边界框和星形标记注释
@@ -112,11 +112,14 @@ pip install -r requirements.txt
 ### 2. 设置API密钥
 
 ```bash
-# Grok (X.AI)
+# Grok-4 API密钥
 export XAI_API_KEY="your_grok_api_key"
 
-# Qwen (阿里云)
+# Qwen-VL-Max API密钥
 export DASHSCOPE_API_KEY="your_qwen_api_key"
+
+# Kimi API密钥
+export MOONSHOT_API_KEY="your_kimi_api_key"
 
 # LLaVA (本地) - 安装Ollama
 brew install ollama  # macOS
@@ -137,6 +140,7 @@ python main.py
 |----------|------|------------------|----------|
 | **Grok** (X.AI) | 云端 | ✅ XAI_API_KEY | 高精度，最新模型 |
 | **Qwen** (阿里云) | 云端 | ✅ DASHSCOPE_API_KEY | 优秀的表格解析，中文支持 |
+| **Kimi** (月之暗面) | 云端 | ✅ MOONSHOT_API_KEY | 良好精度，中文支持 |
 | **LLaVA** | 本地 | ❌ (Ollama) | 隐私保护，离线使用，无费用 |
 
 ## � 文档

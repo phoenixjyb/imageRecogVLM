@@ -104,6 +104,8 @@ class TextProcessor:
             return self._create_grok_prompt(query, image_width, image_height)
         elif provider.lower() == "qwen":
             return self._create_qwen_prompt(query, image_width, image_height)
+        elif provider.lower() == "kimi":
+            return self._create_kimi_prompt(query, image_width, image_height)
         elif provider.lower() == "llava":
             return self._create_llava_prompt(query, image_width, image_height)
         else:
@@ -135,6 +137,20 @@ class TextProcessor:
             f"|---|---|----| "
             f"Where H is the horizontal pixel position and V is the vertical pixel position of the center. "
             f"If you don't see any '{query}', return: | 0 | 0 | 0 |"
+        )
+    
+    def _create_kimi_prompt(self, query: str, image_width: int, image_height: int) -> str:
+        """Create Kimi-optimized prompt - similar to Qwen/Grok format."""
+        return (
+            f"Analyze this {image_width}x{image_height} pixel image. "
+            f"Locate all instances of '{query}' in the image. "
+            f"For each '{query}' object found: "
+            f"1. Calculate the exact center point of the object "
+            f"2. Provide coordinates in this table format: "
+            f"| H | V | ID | "
+            f"|---|---|----| "
+            f"Where H = horizontal center pixel, V = vertical center pixel. "
+            f"If no '{query}' is found, return: | 0 | 0 | 0 |"
         )
     
     def _create_llava_prompt(self, query: str, image_width: int, image_height: int) -> str:

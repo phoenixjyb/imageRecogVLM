@@ -56,6 +56,7 @@ pip install pillow requests speech_recognition
 ```bash
 export XAI_API_KEY="your_grok_api_key"
 export DASHSCOPE_API_KEY="your_qwen_api_key"
+export MOONSHOT_API_KEY="your_kimi_api_key"
 ```
 
 3. For LLaVA support, install and run Ollama:
@@ -117,7 +118,12 @@ export VLM_DEBUG="false"              # Enable debug logging
 - **Model**: qwen-vl-max
 - **Features**: Good table format parsing, ratio coordinate support
 
-### 3. LLaVA (Local)
+### 3. Kimi (Moonshot)
+- **API Key**: Set `MOONSHOT_API_KEY` environment variable
+- **Model**: moonshot-v1-32k
+- **Features**: Good accuracy, Chinese support
+
+### 4. LLaVA (Local)
 - **Setup**: Requires Ollama with LLaVA model
 - **Model**: llava
 - **Features**: Local processing, no API key required

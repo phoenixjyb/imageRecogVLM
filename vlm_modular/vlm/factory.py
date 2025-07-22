@@ -13,6 +13,7 @@ if parent_dir not in sys.path:
 from vlm.base import VLMClient
 from vlm.grok_client import GrokClient
 from vlm.qwen_client_openai import QwenClient  # Use OpenAI-compatible client
+from vlm.kimi_client import KimiClient
 from vlm.llava_client import LLaVAClient
 from config.api_keys import APIKeys
 from config.settings import VLMSettings
@@ -33,6 +34,8 @@ class VLMFactory:
             return self._create_grok_client()
         elif provider == "qwen":
             return self._create_qwen_client()
+        elif provider == "kimi":
+            return self._create_kimi_client()
         elif provider == "llava":
             return self._create_llava_client()
         else:
@@ -53,6 +56,14 @@ class VLMFactory:
             raise ValueError("Qwen API key not found. Please set DASHSCOPE_API_KEY environment variable.")
         
         return QwenClient(api_key, self.settings.qwen_model)
+    
+    def _create_kimi_client(self) -> Optional[KimiClient]:
+        """Create Kimi client instance."""
+        api_key = self.api_keys.get_kimi_key()
+        if not api_key:
+            raise ValueError("Kimi API key not found. Please set MOONSHOT_API_KEY environment variable.")
+        
+        return KimiClient(api_key, self.settings.kimi_model)
     
     def _create_llava_client(self) -> Optional[LLaVAClient]:
         """Create LLaVA client instance."""
@@ -76,6 +87,10 @@ class VLMFactory:
         # Check Qwen
         if self.api_keys.has_key_for_provider("qwen"):
             available.append("qwen")
+        
+        # Check Kimi
+        if self.api_keys.has_key_for_provider("kimi"):
+            available.append("kimi")
         
         # Check LLaVA (always available if server is running)
         try:
@@ -111,7 +126,7 @@ class VLMFactory:
         """Get information about all providers."""
         info = {}
         
-        for provider in ["grok", "qwen", "llava"]:
+        for provider in ["grok", "qwen", "kimi", "llava"]:
             try:
                 client = self.create_client(provider)
                 info[provider] = {
