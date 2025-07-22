@@ -1,6 +1,4 @@
-# VLM Object## ✨ Key Features
-
-- **🤖 Multi-VLM Support**: Grok-4 (X.AI), Qwen-VL-Max (Alibaba), Kimi (Moonshot), LLaVA (local)cognition System - Production Ready
+# VLM Object Recognition System - Production Ready
 
 🤖 A **production-ready**, modular Vision Language Model (VLM) object recognition system with comprehensive testing, professional architecture, and multi-provider support.
 
@@ -12,9 +10,9 @@
 ✅ **Multi-Provider Support**: Grok (X.AI), Qwen (Alibaba), Kimi (Moonshot), LLaVA (local)  
 ✅ **Enterprise Ready**: Modular architecture with dependency injection and error handling  
 
-## 🌟 Key Features
+## ✨ Key Features
 
-- **🤖 Multi-VLM Support**: Grok-4 (X.AI), Qwen-VL (Alibaba), LLaVA (local)
+- **🤖 Multi-VLM Support**: Grok-4 (X.AI), Qwen-VL-Max (Alibaba), Kimi (Moonshot), LLaVA (local)
 - **🎤 Voice Input**: Speech recognition with multilingual support and fallbacks
 - **🧠 Advanced Parsing**: Sophisticated coordinate parsing for different VLM response formats
 - **🖼️ Image Annotation**: Professional annotation with bounding boxes and star markers
@@ -69,14 +67,14 @@ pip install -r requirements.txt
 ### 2. Setup API Keys
 
 ```bash
-# For Grok-4 API
+# For Grok-4 API (X.AI)
 export XAI_API_KEY="your_grok_api_key"
 
-# For Qwen-VL-Max API
+# For Qwen-VL-Max API (Alibaba)
 export DASHSCOPE_API_KEY="your_qwen_api_key"
 
-# For Kimi API  
-export MOONSHOT_API_KEY="your_kimi_api_key"
+# For Kimi API (Moonshot) - NEW!
+export MOONSHOT_API_KEY="your_moonshot_api_key"
 
 # For LLaVA (local) - install Ollama
 brew install ollama  # macOS
@@ -93,12 +91,12 @@ python main.py
 
 ## 🎯 Supported Providers
 
-| Provider | Type | API Key Required | Best For |
-|----------|------|------------------|----------|
-| **Grok** (X.AI) | Cloud | ✅ XAI_API_KEY | High accuracy, latest models |
-| **Qwen** (Alibaba) | Cloud | ✅ DASHSCOPE_API_KEY | Good table parsing, Chinese support |
-| **Kimi** (Moonshot) | Cloud | ✅ MOONSHOT_API_KEY | Good accuracy, Chinese support |
-| **LLaVA** | Local | ❌ (Ollama) | Privacy, offline use, no costs |
+| Provider | Type | API Key Required | Model | Best For |
+|----------|------|------------------|-------|----------|
+| **Grok** (X.AI) | Cloud | ✅ XAI_API_KEY | grok-4-0709 | High accuracy, latest models |
+| **Qwen** (Alibaba) | Cloud | ✅ DASHSCOPE_API_KEY | qwen-vl-max | Good table parsing, Chinese support |
+| **Kimi** (Moonshot) | Cloud | ✅ MOONSHOT_API_KEY | moonshot-v1-32k-vision-preview | Vision processing, Chinese support |
+| **LLaVA** | Local | ❌ (Ollama) | llava | Privacy, offline use, no costs |
 
 ## 📖 Documentation & Testing
 
@@ -151,7 +149,25 @@ export VLM_IMAGE_HEIGHT="480"         # Output image height
 export VLM_DEBUG="false"              # Enable debug logging
 ```
 
-## 📊 Project Achievements
+## � Recent Updates (July 2025)
+
+### ✨ Latest Improvements
+- **🤖 Kimi Integration**: Added Moonshot Kimi (`moonshot-v1-32k-vision-preview`) as 4th VLM provider
+- **⚡ Enhanced Performance**: Improved timeout handling (90s) for vision models
+- **🔧 Better Error Handling**: More informative error messages and retry logic
+- **🎯 Visualization Fixes**: Resolved coordinate parsing and annotation issues
+- **📝 Prompt Optimization**: Provider-specific prompt templates for better accuracy
+- **🔄 UI Improvements**: Clean 4-choice provider selection interface
+- **📚 Documentation Updates**: Comprehensive README updates in multiple languages
+
+### 🐛 Bug Fixes & Optimizations
+- Fixed Kimi API timeout issues with proper connection handling
+- Resolved visualization problems with coordinate table parsing
+- Improved error messaging for network and API issues
+- Enhanced provider-specific prompt generation
+- Optimized image processing pipeline
+
+## �📊 Project Achievements
 
 ### 🏆 Development Statistics
 - **Total Files**: 25+ files created/modified

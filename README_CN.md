@@ -2,11 +2,17 @@
 
 🤖 **生产就绪的**模块化视觉语言模型（VLM）物体识别系统，具备全面测试、专业架构和多提供商支持。
 
-## 🎯 项目状态：**完成且生产就绪## 📖 文档与测试
+## 🎯 项目状态：**完成且生产就绪**
 
-### 📚 完整文档
-- 📋 **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - 综合项目概览和架构
-- 📊 **## 🔗 其他资源
+✅ **全面测试**：与原始实现100%功能一致  
+✅ **综合文档**：完整的项目文档和使用指南  
+✅ **专业结构**：清晰、有组织的代码库和适当的测试框架  
+✅ **多提供商支持**：Grok (X.AI)、Qwen (阿里巴巴)、Kimi (月之暗面)、LLaVA (本地)  
+✅ **企业就绪**：具有依赖注入和错误处理的模块化架## 📜 许可证
+
+本项目用于教育和研究目的。
+
+## 🔗 其他资源
 
 - **📋 [项目总结](PROJECT_SUMMARY.md)** - 完整的架构概览
 - **📊 [开发统计](DEVELOPMENT_STATISTICS.md)** - 详细的开发指标
@@ -28,7 +34,85 @@
 ✅ **超越原始实现的增强功能**  
 ✅ **面向未来的设计**，易于扩展和维护  
 
-**状态**：准备生产部署和进一步开发！🚀ENT_STATISTICS.md](DEVELOPMENT_STATISTICS.md)** - 开发指标和成就
+**状态**：准备生产部署和进一步开发！🚀能
+
+- **🤖 多VLM支持**：Grok-4 (X.AI)、Qwen-VL-Max (阿里巴巴)、Kimi (月之暗面)、LLaVA (本地)
+- **🎤 语音输入**：多语言支持和备用方案的语音识别
+- **🧠 高级解析**：针对不同VLM响应格式的复杂坐标解析
+- **🖼️ 图像标注**：专业的边界框和星形标记标注
+- **� 文本转语音**：跨平台TTS支持
+- **�️ 模块化设计**：清晰、可维护、可扩展的架构
+- **🧪 全面测试**：带有自动验证的完整测试套件
+## 🚀 快速开始
+
+### 1. 安装
+
+```bash
+# 克隆仓库
+git clone https://github.com/phoenixjyb/imageRecogVLM.git
+cd imageRecogVLM
+
+# 安装依赖
+pip install -r requirements.txt
+```
+
+### 2. 设置API密钥
+
+```bash
+# Grok-4 API (X.AI)
+export XAI_API_KEY="your_grok_api_key"
+
+# Qwen-VL-Max API (阿里巴巴)
+export DASHSCOPE_API_KEY="your_qwen_api_key"
+
+# Kimi API (月之暗面) - 新增！
+export MOONSHOT_API_KEY="your_moonshot_api_key"
+
+# LLaVA (本地) - 安装Ollama
+brew install ollama  # macOS
+ollama pull llava
+ollama serve
+```
+
+### 3. 运行系统
+
+```bash
+cd vlm_modular
+python main.py
+```
+
+## 🎯 支持的提供商
+
+| 提供商 | 类型 | 需要API密钥 | 模型 | 最适合 |
+|--------|------|-------------|------|--------|
+| **Grok** (X.AI) | 云端 | ✅ XAI_API_KEY | grok-4-0709 | 高精度、最新模型 |
+| **Qwen** (阿里巴巴) | 云端 | ✅ DASHSCOPE_API_KEY | qwen-vl-max | 表格解析、中文支持 |
+| **Kimi** (月之暗面) | 云端 | ✅ MOONSHOT_API_KEY | moonshot-v1-32k-vision-preview | 视觉处理、中文支持 |
+| **LLaVA** | 本地 | ❌ (Ollama) | llava | 隐私保护、离线使用、无成本 |
+
+## � 最新更新 (2025年7月)
+
+### ✨ 最新改进
+- **🤖 Kimi集成**：新增月之暗面Kimi (`moonshot-v1-32k-vision-preview`) 作为第4个VLM提供商
+- **⚡ 性能增强**：改进超时处理（90秒）用于视觉模型
+- **🔧 更好的错误处理**：更有信息量的错误消息和重试逻辑
+- **🎯 可视化修复**：解决坐标解析和标注问题
+- **📝 提示优化**：为更高准确性的特定提供商提示模板
+- **🔄 UI改进**：清洁的4选择提供商选择界面
+- **�📚 文档更新**：多语言综合README更新
+
+### 🐛 错误修复和优化
+- 修复Kimi API超时问题，采用正确的连接处理
+- 解决坐标表解析的可视化问题
+- 改进网络和API问题的错误消息
+- 增强特定提供商的提示生成
+- 优化图像处理管道
+
+## 📖 文档与测试
+
+### 📚 完整文档
+- 📋 **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - 综合项目概览和架构
+- 📊 **[DEVELOPMENT_STATISTICS.md](DEVELOPMENT_STATISTICS.md)** - 开发指标和成就
 - 🚀 **[vlm_modular/README.md](vlm_modular/README.md)** - 详细的模块化系统指南
 - 🧪 **[testing/README.md](testing/README.md)** - 测试框架文档
 
@@ -48,6 +132,8 @@ cd vlm_modular && python test_system.py
 cd testing && python verify_grok_implementation.py
 
 # 对比模块化与原始行为
+cd testing && python compare_vlm_outputs.py
+```
 cd testing && python compare_vlm_outputs.py
 ```**全面测试**：与原始实现100%功能一致性  
 ✅ **综合文档**：完整的项目文档和使用指南  

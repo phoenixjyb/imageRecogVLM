@@ -5,7 +5,7 @@ A modular Vision Language Model (VLM) object recognition system that supports mu
 ## 📋 Overview
 
 The VLM Object Recognition System is a modular application that provides:
-- **Multiple VLM Support**: Grok-4 (X.AI), Qwen-VL-Max (Alibaba), LLaVA (local)
+- **Multiple VLM Support**: Grok-4 (X.AI), Qwen-VL-Max (Alibaba), Kimi (Moonshot), LLaVA (local)
 - **Voice Input**: Speech recognition with fallback support
 - **Image Processing**: Automatic resizing, base64 encoding, and annotation
 - **Coordinate Parsing**: Advanced parsing for different VLM response formats
@@ -29,6 +29,7 @@ vlm_modular/
 │   ├── base.py           # Base VLM client interface
 │   ├── factory.py        # VLM client factory
 │   ├── grok_client.py    # X.AI Grok implementation
+│   ├── kimi_client.py    # Moonshot Kimi implementation
 │   ├── llava_client.py   # LLaVA local implementation
 │   └── qwen_client.py    # Alibaba Qwen implementation
 ├── image/                # Image processing and annotation
@@ -120,8 +121,8 @@ export VLM_DEBUG="false"              # Enable debug logging
 
 ### 3. Kimi (Moonshot)
 - **API Key**: Set `MOONSHOT_API_KEY` environment variable
-- **Model**: moonshot-v1-32k
-- **Features**: Good accuracy, Chinese support
+- **Model**: moonshot-v1-32k-vision-preview
+- **Features**: Vision processing, Chinese support, 90s timeout handling
 
 ### 4. LLaVA (Local)
 - **Setup**: Requires Ollama with LLaVA model
