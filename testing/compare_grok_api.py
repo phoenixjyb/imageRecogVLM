@@ -158,7 +158,7 @@ def compare_grok_apis():
     
     # Test parameters
     text_command = "pass me the phone"
-    image_path = os.path.join(parent_dir, "sampleImages", "image_000777_rsz.jpg")
+    image_path = os.path.join(parent_dir, "sampleImages", "image_000354.jpg")
     
     # Check if image exists
     if not os.path.exists(image_path):

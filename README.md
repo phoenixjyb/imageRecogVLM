@@ -1,4 +1,6 @@
-# VLM Object Recognition System - Production Ready
+# VLM Object## ✨ Key Features
+
+- **🤖 Multi-VLM Support**: Grok-4 (X.AI), Qwen-VL-Max (Alibaba), LLaVA (local)cognition System - Production Ready
 
 🤖 A **production-ready**, modular Vision Language Model (VLM) object recognition system with comprehensive testing, professional architecture, and multi-provider support.
 
@@ -137,7 +139,7 @@ cd testing && python compare_vlm_outputs.py
 Environment variables for customization:
 
 ```bash
-export VLM_DEFAULT_PROVIDER="grok"    # Default VLM provider
+export VLM_DEFAULT_PROVIDER="qwen"    # Default VLM provider
 export VLM_ENABLE_VOICE="true"        # Enable voice input
 export VLM_ENABLE_TTS="true"          # Enable text-to-speech
 export VLM_IMAGE_WIDTH="640"          # Output image width

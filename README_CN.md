@@ -57,7 +57,7 @@ cd testing && python compare_vlm_outputs.py
 
 ## 🌟 核心功能
 
-- **🤖 多VLM支持**：Grok-4 (X.AI)、Qwen-VL (阿里云)、LLaVA (本地)
+- **🤖 多VLM支持**：Grok-4 (X.AI)、Qwen-VL-Max (阿里云)、LLaVA (本地)
 - **🎤 语音输入**：多语言语音识别和回退机制
 - **🧠 高级解析**：支持不同VLM响应格式的智能坐标解析
 - **🖼️ 图像标注**：专业的边界框和星形标记注释
@@ -162,7 +162,7 @@ python main.py
 用于自定义的环境变量：
 
 ```bash
-export VLM_DEFAULT_PROVIDER="grok"    # 默认VLM提供商
+export VLM_DEFAULT_PROVIDER="qwen"    # 默认VLM提供商
 export VLM_ENABLE_VOICE="true"        # 启用语音输入
 export VLM_ENABLE_TTS="true"          # 启用文本转语音
 export VLM_IMAGE_WIDTH="640"          # 输出图像宽度

@@ -21,7 +21,7 @@ from vlm.base import VLMClient
 class QwenClient(VLMClient):
     """Client for Alibaba Qwen vision model using OpenAI-compatible endpoint."""
     
-    def __init__(self, api_key: str, model: str = "qwen-vl-plus"):
+    def __init__(self, api_key: str, model: str = "qwen-vl-max"):
         """Initialize Qwen client with OpenAI-compatible endpoint."""
         super().__init__(api_key, model)
         self.logger = logging.getLogger(__name__)

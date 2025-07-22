@@ -2,9 +2,10 @@
 
 A modular Vision Language Model (VLM) object recognition system that supports multiple VLM providers, voice input, and image annotation.
 
-## Features
+## 📋 Overview
 
-- **Multiple VLM Support**: Grok-4 (X.AI), Qwen-VL (Alibaba), LLaVA (local)
+The VLM Object Recognition System is a modular application that provides:
+- **Multiple VLM Support**: Grok-4 (X.AI), Qwen-VL-Max (Alibaba), LLaVA (local)
 - **Voice Input**: Speech recognition with fallback support
 - **Image Processing**: Automatic resizing, base64 encoding, and annotation
 - **Coordinate Parsing**: Advanced parsing for different VLM response formats
@@ -96,7 +97,7 @@ python main.py
 You can configure the system using environment variables:
 
 ```bash
-export VLM_DEFAULT_PROVIDER="grok"    # Default VLM provider
+export VLM_DEFAULT_PROVIDER="qwen"    # Default VLM provider
 export VLM_ENABLE_VOICE="true"        # Enable voice input
 export VLM_ENABLE_TTS="true"          # Enable text-to-speech
 export VLM_IMAGE_WIDTH="640"          # Output image width
@@ -113,7 +114,7 @@ export VLM_DEBUG="false"              # Enable debug logging
 
 ### 2. Qwen (Alibaba)
 - **API Key**: Set `DASHSCOPE_API_KEY` environment variable  
-- **Model**: qwen-vl-max-0809
+- **Model**: qwen-vl-max
 - **Features**: Good table format parsing, ratio coordinate support
 
 ### 3. LLaVA (Local)

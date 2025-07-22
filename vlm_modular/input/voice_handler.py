@@ -24,11 +24,36 @@ class VoiceHandler:
         self.microphone = sr.Microphone()
         self.logger = logging.getLogger(__name__)
         
+        # Check Google service availability at startup
+        self._google_available = self._check_google_service()
+        
         # Adjust for ambient noise
         with self.microphone as source:
             self.recognizer.adjust_for_ambient_noise(source)
     
-    def get_voice_input(self, language: str = "en-US") -> Optional[str]:
+    def _check_google_service(self) -> bool:
+        """Check if Google Speech Recognition service is available."""
+        try:
+            import socket
+            import urllib.request
+            
+            # Test network connectivity
+            socket.setdefaulttimeout(3.0)
+            
+            # Try to reach Google's speech service
+            urllib.request.urlopen('https://www.google.com', timeout=3)
+            self.logger.info("Google Speech Recognition service is available")
+            return True
+            
+        except Exception as e:
+            self.logger.warning(f"Google Speech Recognition service unavailable: {e}")
+            return False
+    
+    def is_google_available(self) -> bool:
+        """Check if Google service is currently available."""
+        return self._google_available
+    
+    def get_voice_input(self, language: str = "en-GB") -> Optional[str]:
         """Get voice input from microphone."""
         if not self.settings.enable_voice_input:
             self.logger.info("Voice input is disabled")
@@ -72,25 +97,31 @@ class VoiceHandler:
             except Exception as e:
                 print(f"   ⚠️ Offline recognition failed: {str(e)[:50]}...")
             
-            # Only try online if offline fails and we want to attempt it
-            try:
-                print("🌐 Trying online recognition...")
-                import socket
-                # Set a very short timeout for network operations
-                socket.setdefaulttimeout(3.0)
-                text = self.recognizer.recognize_google(audio, language=language)
-                self.logger.info(f"Online voice recognition successful: {text}")
-                print(f"\n{'='*50}")
-                print("🎯 VOICE RECOGNITION RESULT")
-                print("="*50)
-                print(f"📝 Method: Online Recognition ({language})")
-                print(f"🗣️  Recognized Text: '{text}'")
-                print("="*50)
-                return text.lower().strip()
-            
-            except Exception as e:
-                print(f"   ❌ Online recognition failed: {str(e)[:50]}...")
-                self.logger.warning("Online voice recognition failed")
+            # Only try online if Google service is available
+            if self.is_google_available():
+                try:
+                    print("🌐 Trying online recognition (British English)...")
+                    import socket
+                    # Set a very short timeout for network operations
+                    socket.setdefaulttimeout(3.0)
+                    text = self.recognizer.recognize_google(audio, language=language)
+                    self.logger.info(f"Online voice recognition successful: {text}")
+                    print(f"\n{'='*50}")
+                    print("🎯 VOICE RECOGNITION RESULT")
+                    print("="*50)
+                    print(f"📝 Method: Online Recognition (British English)")
+                    print(f"🗣️  Recognised Text: '{text}'")
+                    print("="*50)
+                    return text.lower().strip()
+                
+                except Exception as e:
+                    print(f"   ❌ Online recognition failed: {str(e)[:50]}...")
+                    self.logger.warning("Online voice recognition failed")
+                    # Update availability status
+                    self._google_available = False
+                    return self._offline_recognition(audio)
+            else:
+                print("   ⚠️ Google Speech service unavailable, using offline recognition...")
                 return self._offline_recognition(audio)
         
         except sr.WaitTimeoutError:
@@ -144,7 +175,7 @@ class VoiceHandler:
     def get_voice_input_with_fallback(self, languages: List[str] = None) -> Optional[str]:
         """Get voice input with multiple language fallbacks."""
         if languages is None:
-            languages = ["en-US", "zh-CN"]
+            languages = ["en-GB", "zh-CN"]  # British English first, then Chinese
         
         for language in languages:
             result = self.get_voice_input(language)

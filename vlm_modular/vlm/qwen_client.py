@@ -18,7 +18,7 @@ from vlm.base import VLMClient
 class QwenClient(VLMClient):
     """Client for Alibaba Qwen vision model."""
     
-    def __init__(self, api_key: str, model: str = "qwen-vl-max-0809"):
+    def __init__(self, api_key: str, model: str = "qwen-vl-max"):
         """Initialize Qwen client."""
         super().__init__(api_key, model)
         self.base_url = "dashscope.aliyuncs.com"

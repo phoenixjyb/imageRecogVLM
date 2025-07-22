@@ -27,7 +27,7 @@ def test_original_approach():
         import imageRecogVLM
         
         # Set up test parameters
-        image_path = str(parent_dir / "sampleImages" / "image_000777_rsz.jpg")
+        image_path = str(parent_dir / "sampleImages" / "image_000354.jpg")
         query = "pass me the phone"
         
         print(f"Image: {image_path}")
@@ -106,7 +106,7 @@ def test_modular_approach():
         from vlm_modular.image.coordinate_parser import CoordinateParser
         
         # Set up test parameters
-        image_path = str(parent_dir / "sampleImages" / "image_000777_rsz.jpg")
+        image_path = str(parent_dir / "sampleImages" / "image_000354.jpg")
         query = "pass me the phone"
         
         print(f"Image: {image_path}")
@@ -272,7 +272,7 @@ def main():
     """Main test function."""
     print("VLM Output Comparison Test")
     print("Testing: 'pass me the phone' with Qwen model")
-    print("Image: sampleImages/image_000777_rsz.jpg")
+    print("Image: sampleImages/image_000354.jpg")
     print()
     
     # Test both approaches
@@ -286,7 +286,7 @@ def main():
     results = {
         "test_query": "pass me the phone",
         "test_model": "qwen",
-        "test_image": "sampleImages/image_000777_rsz.jpg",
+        "test_image": "sampleImages/image_000354.jpg",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "original": original_result,
         "modular": modular_result

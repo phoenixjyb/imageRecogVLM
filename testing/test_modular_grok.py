@@ -42,7 +42,7 @@ def test_modular_grok_system():
         
         # Test parameters
         text_command = "pass me the phone"
-        image_path = os.path.join(parent_dir, "sampleImages", "image_000777_rsz.jpg")
+        image_path = os.path.join(parent_dir, "sampleImages", "image_000354.jpg")
         
         print(f"📝 Text command: '{text_command}'")
         print(f"🖼️  Image path: {image_path}")

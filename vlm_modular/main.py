@@ -46,6 +46,25 @@ class VLMObjectRecognition:
         
         self.logger = logging.getLogger(__name__)
         self.logger.info("VLM Object Recognition System initialized")
+        
+        # Display service availability status
+        self._display_service_status()
+    
+    def _display_service_status(self):
+        """Display the status of various services."""
+        print("\n🔍 Service Availability Check")
+        print("=" * 50)
+        
+        # Voice services
+        if self.voice_handler.is_google_available():
+            print("✅ Google Speech Recognition: Available")
+        else:
+            print("❌ Google Speech Recognition: Unavailable (using offline)")
+            
+        print(f"🎙️  Voice Input: {'Enabled' if self.settings.enable_voice_input else 'Disabled'}")
+        print(f"🗣️  TTS Output: {'Enabled' if self.settings.enable_tts else 'Disabled'}")
+        print(f"🤖 Default VLM: {self.settings.default_vlm_provider.upper()}")
+        print("=" * 50)
     
     def _setup_logging(self):
         """Setup logging configuration."""
@@ -167,20 +186,26 @@ class VLMObjectRecognition:
         """Get query from user via voice or text input with user choice."""
         print("\n🎤 Input Mode Selection")
         print("=" * 50)
-        print("1. 🎙️  Voice Input")
+        print("1. 🎙️  Voice Input (Default)")
         print("   - Speak your command")
         print("   - Automatically converted to text")
         print("   - Supports English and Chinese")
         print("")
         print("2. ⌨️  Text Input") 
         print("   - Type your command")
-        print("   - Current default mode")
+        print("   - Manual text entry mode")
         print("   - Supports English and Chinese")
         print("=" * 50)
+        print("💡 Press Enter for default Voice Input or choose 1/2:")
         
         while True:
             try:
-                choice = input("Choose input mode (1 for Voice, 2 for Text): ").strip()
+                choice = input("Choose input mode (1 for Voice, 2 for Text) [Default: Voice]: ").strip()
+                
+                # Default to voice input if user just presses Enter
+                if not choice:
+                    choice = "1"
+                    print("🎙️ Defaulting to Voice Input...")
                 
                 if choice == "1":
                     if not self.settings.enable_voice_input:
@@ -324,7 +349,7 @@ def main():
     print()
     
     # Get image path
-    default_image = "~/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"
+    default_image = "~/Projects/vlmTry/sampleImages/image_000354.jpg"
     image_path = input(f"Enter image path (default: {default_image}): ").strip()
     if not image_path:
         image_path = os.path.expanduser(default_image)
@@ -343,13 +368,13 @@ def main():
     
     if len(providers) > 1:
         print(f"Available providers: {', '.join(providers)}")
-        print("1. grok")
-        print("2. qwen") 
+        print("1. qwen")
+        print("2. grok") 
         print("3. llava")
-        choice = input(f"Choose provider (1/2/3, default: 1): ").strip()
+        choice = input(f"Choose provider (1/2/3, default: 1 - qwen): ").strip()
         
-        # Map number choices to provider names
-        provider_map = {'1': 'grok', '2': 'qwen', '3': 'llava'}
+        # Map number choices to provider names (Qwen is now #1)
+        provider_map = {'1': 'qwen', '2': 'grok', '3': 'llava'}
         
         if choice in provider_map and provider_map[choice] in providers:
             provider = provider_map[choice]
@@ -357,7 +382,11 @@ def main():
             # Allow direct provider name input as fallback
             provider = choice
         else:
-            provider = providers[0]  # Default to first available
+            # Default to qwen if available, otherwise first available
+            if 'qwen' in providers:
+                provider = 'qwen'
+            else:
+                provider = providers[0]
     else:
         provider = providers[0]
     

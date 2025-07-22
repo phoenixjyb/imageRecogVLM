@@ -1,0 +1,137 @@
+flowchart TD
+    A[🚀 Start VLM Object Recognition System] --> B[🎤 Choose Input Mode]
+    B --> C{Input Type?}
+    
+    %% Input Path
+    C -->|Voice| D[🎙️ Voice Input]
+    C -->|Text| E[⌨️ Text Input]
+    
+    D --> F[🔧 Calibrate Microphone]
+    F --> G[🔴 Record Audio]
+    G --> H[🔍 Speech Recognition]
+    H --> I{Recognition Success?}
+    I -->|Yes| J[📝 Display Recognized Text]
+    I -->|No| K[❌ Fallback to Text Input]
+    K --> E
+    J --> L[🌏 Check for Chinese Text]
+    E --> L
+    
+    L --> M{Contains Chinese?}
+    M -->|Yes| N[🔄 Translate to English]
+    M -->|No| O[🎯 Extract Object Name]
+    N --> O
+    
+    %% VLM Selection
+    O --> P[🤖 Choose VLM Provider]
+    P --> Q{Which Provider?}
+    
+    Q -->|1| R[☁️ Grok-4 API]
+    Q -->|2| S[☁️ Qwen-VL-Max API]
+    Q -->|3| T[🖥️ Local LLaVA]
+    
+    %% API Key Validation
+    R --> U{XAI API Key Available?}
+    S --> V{DashScope API Key Available?}
+    T --> W{Ollama Service Running?}
+    
+    U -->|No| X[❌ Error: Missing API Key]
+    V -->|No| X
+    W -->|No| Y[❌ Error: Ollama Not Available]
+    
+    U -->|Yes| Z[📸 Load & Process Image]
+    V -->|Yes| Z
+    W -->|Yes| Z
+    
+    %% Image Processing
+    Z --> AA[📐 Get Original Dimensions]
+    AA --> BB{Resize Image?}
+    BB -->|Yes| CC[🔄 Resize with Aspect Ratio]
+    BB -->|No| DD[✅ Use Original Resolution]
+    CC --> EE[📦 Encode to Base64]
+    DD --> EE
+    
+    %% Prompt Generation
+    EE --> FF[📝 Build VLM Prompt]
+    FF --> GG{Which Prompt Type?}
+    GG -->|Grok| HH[🚀 Build Grok Prompt<br/>Table Format: H|V|ID]
+    GG -->|Qwen| II[🧠 Build Qwen Prompt<br/>Table Format: H|V|ID]
+    GG -->|LLaVA| JJ[🏠 Build Local Prompt<br/>Center Point Format]
+    
+    %% API Calls
+    HH --> KK[🌐 Call Grok-4 API]
+    II --> LL[🌐 Call Qwen API]
+    JJ --> MM[🖥️ Call Local LLaVA API]
+    
+    %% API Processing
+    KK --> NN[📡 HTTP Request with Retry Logic]
+    LL --> OO[📡 OpenAI-Compatible Request]
+    MM --> PP[📡 Ollama Local Request]
+    
+    NN --> QQ{API Success?}
+    OO --> QQ
+    PP --> QQ
+    
+    QQ -->|No| RR[❌ API Error]
+    QQ -->|Yes| SS[📄 Extract Response Content]
+    
+    %% Response Parsing
+    SS --> TT[🔍 Parse Coordinates]
+    TT --> UU{Response Format?}
+    
+    UU -->|Table Format| VV[📊 Parse Table: H|V|ID]
+    UU -->|Natural Language| WW[🗣️ Parse Coordinate Patterns]
+    UU -->|Not Found| XX[❌ Object Not Detected]
+    
+    %% Coordinate Processing
+    VV --> YY[✅ Extract Center Points]
+    WW --> ZZ[🔄 Convert to Center Points]
+    YY --> AAA[📐 Validate Coordinates]
+    ZZ --> AAA
+    XX --> BBB[📋 Generate Not Found Response]
+    
+    AAA --> CCC{Valid Coordinates?}
+    CCC -->|No| BBB
+    CCC -->|Yes| DDD[📊 Scale Coordinates if Needed]
+    
+    DDD --> EEE[📋 Generate Success Response]
+    BBB --> FFF[📱 Display Response]
+    EEE --> FFF
+    
+    %% Output Generation
+    FFF --> GGG[🔊 Text-to-Speech]
+    GGG --> HHH{Object Found?}
+    
+    HHH -->|No| III[📷 Show Original Image]
+    HHH -->|Yes| JJJ[🎨 Annotate Image with Star]
+    
+    JJJ --> KKK[⭐ Draw Star at Coordinates]
+    KKK --> LLL[📍 Add Coordinate Labels]
+    LLL --> MMM[💾 Save Annotated Image]
+    MMM --> NNN[🖼️ Display Annotated Image]
+    
+    III --> OOO[✅ Process Complete]
+    NNN --> OOO
+    
+    %% Error Handling
+    X --> PPP[🔧 Show Available Options]
+    Y --> PPP
+    RR --> QQQ[🔄 Retry or Fallback]
+    PPP --> OOO
+    QQQ --> OOO
+    
+    %% Styling
+    classDef startEnd fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    classDef input fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef process fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef decision fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef api fill:#e3f2fd,stroke:#0277bd,stroke-width:2px
+    classDef output fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef error fill:#ffebee,stroke:#c62828,stroke-width:2px
+    
+    class A,OOO startEnd
+    class D,E,F,G,H,J,K input
+    class AA,BB,CC,DD,EE,FF,TT,YY,ZZ,AAA,DDD process
+    class C,I,M,Q,U,V,W,BB,GG,UU,CCC,HHH decision
+    class KK,LL,MM,NN,OO,PP api
+    class FFF,GGG,JJJ,KKK,LLL,MMM,NNN,III output
+    class X,Y,RR,XX,BBB,PPP,QQQ error

@@ -548,7 +548,7 @@ def generate_response(object_str: str, recognized: bool, coord_str: str, raw_res
     if raw_response:
         vlm_name = vlm_choice.upper()
         if vlm_choice == "qwen":
-            vlm_name = "QWEN-VL"
+            vlm_name = "QWEN-VL-MAX"
         elif vlm_choice == "grok":
             vlm_name = "GROK-4"
         elif vlm_choice == "local":
@@ -731,12 +731,12 @@ def get_vlm_choice() -> str:
     # Check Qwen availability
     qwen_available = bool(DASHSCOPE_API_KEY)
     if qwen_available:
-        print("2. ☁️  Cloud VLM (Qwen-VL via DashScope API) ✅ Available")
+        print("2. ☁️  Cloud VLM (Qwen-VL-Max via DashScope API) ✅ Available")
         print("   - Good accuracy, excellent Chinese support")
         print("   - Requires internet & DashScope API key")
         print("   - Processing cost applies")
     else:
-        print("2. ☁️  Cloud VLM (Qwen-VL via DashScope API) ❌ Not Available")
+        print("2. ☁️  Cloud VLM (Qwen-VL-Max via DashScope API) ❌ Not Available")
         print("   - Set DASHSCOPE_API_KEY environment variable")
     print("")
     
@@ -846,12 +846,12 @@ def call_qwen_api(prompt: str, image_path: str, api_key: str) -> str:
         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
     )
     
-    print("🌐 Sending API request to Qwen-VL...")
+    print("🌐 Sending API request to Qwen-VL-Max...")
     request_start_time = time.time()
     
     try:
         completion = client.chat.completions.create(
-            model="qwen-vl-plus",  # You can also use "qwen-vl-max" for higher accuracy
+            model="qwen-vl-max",  # Updated model for higher accuracy
             messages=[{
                 "role": "user",
                 "content": [
@@ -917,19 +917,26 @@ def get_input_mode() -> str:
     """
     print("\n🎤 Input Mode Selection")
     print("=" * 50)
-    print("1. 🎙️  Voice Input")
+    print("1. 🎙️  Voice Input (Default)")
     print("   - Speak your command")
     print("   - Automatically converted to text")
     print("   - Supports English and Chinese")
     print("")
     print("2. ⌨️  Text Input") 
     print("   - Type your command")
-    print("   - Current default mode")
+    print("   - Manual text entry mode")
     print("   - Supports English and Chinese")
     print("=" * 50)
+    print("💡 Press Enter for default Voice Input or choose 1/2:")
     
     while True:
-        choice = input("Choose input mode (1 for Voice, 2 for Text): ").strip()
+        choice = input("Choose input mode (1 for Voice, 2 for Text) [Default: Voice]: ").strip()
+        
+        # Default to voice input if user just presses Enter
+        if not choice:
+            choice = "1"
+            print("🎙️ Defaulting to Voice Input...")
+        
         if choice == "1":
             print("\n🎙️ Initiating voice input...")
             voice_result = get_voice_input()
@@ -987,31 +994,48 @@ def get_voice_input() -> str:
         
         print("🔍 Converting speech to text...")
         
-        # Try English first
-        try:
-            result = recognizer.recognize_google(audio, language="en-US")
-            print("\n" + "="*50)
-            print("🎯 VOICE RECOGNITION RESULT")
-            print("="*50)
-            print(f"📝 Language: English")
-            print(f"🗣️  Recognized Text: '{result}'")
-            print("="*50)
-            return result
-        except sr.UnknownValueError:
-            print("   ❌ English recognition failed, trying Chinese...")
+        # Check Google service availability first
+        def check_google_service():
+            try:
+                import socket
+                import urllib.request
+                socket.setdefaulttimeout(3.0)
+                urllib.request.urlopen('https://www.google.com', timeout=3)
+                return True
+            except:
+                return False
         
-        # Try Chinese
-        try:
-            result = recognizer.recognize_google(audio, language="zh-CN")
-            print("\n" + "="*50)
-            print("🎯 VOICE RECOGNITION RESULT")
-            print("="*50)
-            print(f"📝 Language: Chinese")
-            print(f"🗣️  Recognized Text: '{result}'")
-            print("="*50)
-            return result
-        except sr.UnknownValueError:
-            print("   ❌ Chinese recognition failed, trying offline...")
+        google_available = check_google_service()
+        
+        if google_available:
+            # Try British English first
+            try:
+                result = recognizer.recognize_google(audio, language="en-GB")
+                print("\n" + "="*50)
+                print("🎯 VOICE RECOGNITION RESULT")
+                print("="*50)
+                print(f"📝 Language: British English")
+                print(f"🗣️  Recognised Text: '{result}'")
+                print("="*50)
+                return result
+            except sr.UnknownValueError:
+                print("   ❌ British English recognition failed, trying Chinese...")
+        else:
+            print("   ⚠️ Google Speech service unavailable, trying offline recognition...")
+        
+        if google_available:
+            # Try Chinese
+            try:
+                result = recognizer.recognize_google(audio, language="zh-CN")
+                print("\n" + "="*50)
+                print("🎯 VOICE RECOGNITION RESULT")
+                print("="*50)
+                print(f"📝 Language: Chinese")
+                print(f"🗣️  Recognised Text: '{result}'")
+                print("="*50)
+                return result
+            except sr.UnknownValueError:
+                print("   ❌ Chinese recognition failed, trying offline...")
         
         # Try offline recognition
         try:
@@ -1041,19 +1065,26 @@ def get_user_input() -> str:
     """
     print("\n🎤 Input Mode Selection")
     print("=" * 50)
-    print("1. 🎙️  Voice Input")
+    print("1. 🎙️  Voice Input (Default)")
     print("   - Speak your command")
     print("   - Automatically converted to text")
     print("   - Supports English and Chinese")
     print("")
     print("2. ⌨️  Text Input") 
     print("   - Type your command")
-    print("   - Current default mode")
+    print("   - Manual text entry mode")
     print("   - Supports English and Chinese")
     print("=" * 50)
+    print("💡 Press Enter for default Voice Input or choose 1/2:")
     
     while True:
-        choice = input("Choose input mode (1 for Voice, 2 for Text): ").strip()
+        choice = input("Choose input mode (1 for Voice, 2 for Text) [Default: Voice]: ").strip()
+        
+        # Default to voice input if user just presses Enter
+        if not choice:
+            choice = "1"
+            print("🎙️ Defaulting to Voice Input...")
+        
         if choice == "1":
             print("\n🎙️ Initiating voice input...")
             voice_result = get_voice_input()
@@ -1085,7 +1116,7 @@ def get_user_input() -> str:
 def main():
     """
     Main function to orchestrate the process.
-    Now supports voice input, text input, and three VLM pathways: Grok-4, Qwen-VL, and local LLaVA.
+    Now supports voice input, text input, and three VLM pathways: Grok-4, Qwen-VL-Max, and local LLaVA.
     """
     print("=" * 60)
     print("🤖 VLM Object Recognition System (Voice + 3-Mode)")
@@ -1112,7 +1143,7 @@ def main():
             print(f"\n💬 Command received: '{user_input}'")
         
         image_dir = "/Users/yanbo/Projects/vlmTry/sampleImages"
-        image_name = "image_000777_rsz.jpg"
+        image_name = "image_000354.jpg"
         image_path = os.path.join(image_dir, image_name)
         
         print(f"\n📂 Loading image: {image_name}")
@@ -1154,7 +1185,7 @@ def main():
             # Validate API key for Qwen mode
             if not DASHSCOPE_API_KEY:
                 raise ValueError("DASHSCOPE_API_KEY environment variable not set. Required for Qwen mode.")
-            print(f"\n🚀 Calling Qwen-VL Vision API (Cloud)...")
+            print(f"\n🚀 Calling Qwen-VL-Max Vision API (Cloud)...")
             response_text = call_qwen_api(prompt, image_path, DASHSCOPE_API_KEY)
             
         else:  # local
@@ -1232,7 +1263,7 @@ def test_llava_prompts():
     Test different prompt styles with LLaVA to see which works best.
     """
     object_str = "keyboard"
-    image_path = "/Users/yanbo/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"
+    image_path = "/Users/yanbo/Projects/vlmTry/sampleImages/image_000354.jpg"
     
     # Test different prompt styles
     prompts = [
@@ -1282,9 +1313,9 @@ def test_coordinate_variance():
     Test if models return different coordinates for different images/objects.
     """
     test_cases = [
-        ("keyboard", "/Users/yanbo/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"),
-        ("mouse", "/Users/yanbo/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"),
-        ("cup", "/Users/yanbo/Projects/vlmTry/sampleImages/image_000777_rsz.jpg"),
+        ("keyboard", "/Users/yanbo/Projects/vlmTry/sampleImages/image_000354.jpg"),
+        ("mouse", "/Users/yanbo/Projects/vlmTry/sampleImages/image_000354.jpg"),
+        ("cup", "/Users/yanbo/Projects/vlmTry/sampleImages/image_000354.jpg"),
     ]
     
     print("🧪 Testing coordinate variance across different objects...")

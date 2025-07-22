@@ -9,8 +9,8 @@ class VLMSettings:
     """Central configuration for VLM Object Recognition System."""
     
     # VLM Provider settings
-    default_vlm_provider: str = "grok"
-    available_providers: list = field(default_factory=lambda: ["grok", "qwen", "llava"])
+    default_vlm_provider: str = "qwen"
+    available_providers: list = field(default_factory=lambda: ["qwen", "grok", "llava"])
     
     # Voice input settings
     enable_voice_input: bool = True
@@ -33,7 +33,7 @@ class VLMSettings:
     
     # API settings
     grok_model: str = "grok-4-0709"  # Same model as original
-    qwen_model: str = "qwen-vl-plus"  # Same model as original
+    qwen_model: str = "qwen-vl-max"  # Updated model
     llava_model: str = "llava"
     
     # Request settings

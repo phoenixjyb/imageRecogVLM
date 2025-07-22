@@ -70,7 +70,7 @@ flowchart TB
     subgraph "VLM Processing Layer"
         VLM_SEL{VLM Selection}
         GROK[☁️ Grok-4 API]
-        QWEN[☁️ Qwen-VL API]
+        QWEN[☁️ Qwen-VL-Max API]
         LLAVA[🖥️ LLaVA Local]
     end
 
